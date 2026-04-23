@@ -1,0 +1,5 @@
+fastapi
+requests
+tk
+configparser
+openai

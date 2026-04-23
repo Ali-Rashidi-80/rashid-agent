@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>همیار رشید</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/lib/prism-tomorrow.min.css">
+  <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+</head>
+<body>
+  <div class="form-container">
+    <h1>همیار کد رشید</h1>
+    <form id="dataForm">
+      <label for="textInput">چه کمکی از دستم بر میاد:</label>
+      <textarea id="textInput" rows="5" placeholder="متن درخواستی خود را اینجا بنویسید..." style="font-size: 16px;"></textarea>
+      <button type="submit">ارسال</button>
+<button type="button" id="applyChangesBtn" style="display: none;">اعمال تغییرات</button>
+    </form>
+    <!-- نمایش مسیر انتخاب شده -->
+    <div id="selectedPathDisplay" style="margin-top: 20px; cursor: pointer;"></div>
+    <div id="output"></div>
+  </div>
+
+
+
+   <!-- اضافه کردن کتابخانه‌های Markdown و Syntax Highlighting -->
+  <script src="/static/lib/marked.min.js"></script>
+  <script src="/static/lib/prism-autoloader.min.js"></script>
+  <script src="/static/lib/prism-core.min.js"></script>
+
+
+  <script src="/static/script.js"></script>
+
+
+
+</body>
+</html>
