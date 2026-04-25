@@ -26,7 +26,7 @@ document.getElementById('dataForm').addEventListener('submit', async function(ev
     attachApplyChangesListener();
   } catch (error) {
     console.error('Error:', error);
-    outputDiv.innerHTML = `<p style="color: #ff6f61;">خطا در ارسال داده‌ها: ${error.message}</p>`;
+    outputDiv.innerHTML = `<p style="color: #ff6b6b;">خطا در ارسال داده‌ها: ${error.message}</p>`;
   }
 });
 
@@ -66,26 +66,88 @@ function formatJsonToItems(data) {
 
 
 
-  if (data.edits && Array.isArray(data.edits)) {
 
-    data.edits.forEach((edit, index) => {
+if (data.edits && Array.isArray(data.edits)) {
 
-      markdown += `### ویرایش ${index + 1}:\n- **مسیر:** ${edit.path || 'نامشخص'}\n- **گزارش:** ${edit.log || 'بدون گزارش'}\n- **توضیحات:** ${edit.info || 'بدون توضیحات'}\n\n`;
+  data.edits.forEach((edit, index) => {
 
-      if (edit.edits && Array.isArray(edit.edits)) {
 
-        edit.edits.forEach((subEdit, subIndex) => {
 
-          markdown += `#### ویرایش ${subIndex + 1}:\n- **خطوط:** ${subEdit.start_number_line || '؟'} تا ${subEdit.end_number_line || '؟'}\n- **نوع:** ${subEdit.type || 'نامشخص'}\n\n**کد جدید:**\n\n\`\`\`auto\n${subEdit.new_code || 'بدون کد'}\n\`\`\`\n\n`;
+    markdown += `### ویرایش ${index + 1}:
 
-        });
+- مسیر: ${edit.path || 'نامشخص'}
 
-      }
+- گزارش: ${edit.log || 'بدون گزارش'}
 
-    });
+- توضیحات: ${edit.info || 'بدون توضیحات'}
 
-  }
 
+
+`;
+
+
+
+    if (edit.edits && Array.isArray(edit.edits)) {
+
+
+
+      edit.edits.forEach((subEdit, subIndex) => {
+
+
+
+        let language = 'auto';
+
+        if (edit.path.endsWith('.md')) {
+
+          language = 'markdown';
+
+        } else if (edit.path === '.gitignore') {
+
+          language = 'text';
+
+        } else {
+
+          language = detectLanguage(subEdit.new_code);
+
+        }
+
+
+
+        markdown += `#### ویرایش ${subIndex + 1}:
+
+- خطوط: ${subEdit.start_number_line || '؟'} تا ${subEdit.end_number_line || '؟'}
+
+- نوع: ${subEdit.type || 'نامشخص'}
+
+
+
+کد جدید:
+
+
+
+\`\`\`${language}
+
+${subEdit.new_code || 'بدون کد'}
+
+\`\`\`
+
+
+
+`;
+
+
+
+      });
+
+
+
+    }
+
+
+
+  });
+
+}
 
 
   let html = marked.parse(markdown);
@@ -93,16 +155,14 @@ function formatJsonToItems(data) {
 
 
   // اعمال syntax highlighting با Prism
+  html = html.replace(/<pre><code class="language-([^"]*)">([\s\S]*?)<\/code><\/pre>/g, (match, lang, code) => {
 
-  html = html.replace(/<pre><code class="language-auto">([\s\S]*?)<\/code><\/pre>/g, (match, code) => {
-
-    let language = detectLanguage(code);
-
-    return `<div class="code-container"><button class="copy-btn" onclick="copyToClipboard(this)">کپی</button><pre><code class="language-${language}">${code}</code></pre></div>`;
+    return `<div class="code-container"><button class="copy-btn" onclick="copyToClipboard(this)">کپی</button><pre><code class="language-${lang}">${code}</code></pre></div>`;
 
   });
 
 
+  
 
   html = `<div class="item">${html}</div>`;
 
@@ -296,10 +356,11 @@ function createBackupRestoreElements() {
   populateBackupVersions();
 }
 
-// حذف خطای await در سطح بالا
+// اجرای اولیه
 (function() {
   createBackupRestoreElements();
 })();
+
 
 async function requestNewPathFromServer() {
   try {

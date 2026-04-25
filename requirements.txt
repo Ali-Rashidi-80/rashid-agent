@@ -1,5 +1,7 @@
 fastapi
 requests
-tk
+tkinter
 configparser
 openai
+uvicorn
+jinja2

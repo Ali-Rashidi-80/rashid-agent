@@ -1,15 +1,16 @@
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import JSONResponse, HTMLResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from core import payload, read_directory_path, write_directory_path, process_json
 import os
+import glob
 import webbrowser
 import subprocess
 import tkinter as tk
 from tkinter import filedialog
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from core.set_json import restore_backup
-import glob
+from core import payload, read_directory_path, write_directory_path, process_json
+
 
 app = FastAPI()
 
@@ -19,8 +20,8 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # Templates
 templates = Jinja2Templates(directory="templates")
 
-payloadJson = {}
-libeary = ""
+payload_json = {}
+library = ""
 current_path = read_directory_path()
 
 @app.get("/", response_class=HTMLResponse)
@@ -29,22 +30,22 @@ async def index(request: Request):
 
 @app.post("/generate")
 async def handle_request(request: Request):
-    global payloadJson
+    global payload_json
     data = await request.json()
     user_text = data.get('text')
     if not user_text:
         raise HTTPException(status_code=400, detail='متن ورودی یافت نشد')
-    payloadJson = payload(user_text)
-    return JSONResponse(content=payloadJson)
+    payload_json = payload(user_text)
+    return JSONResponse(content=payload_json)
 
 @app.get("/pip")
 async def cmd():
-    global libeary, current_path
-    if 'pip' in payloadJson:
-        libeary = payloadJson['pip']
+    global library, current_path
+    if 'pip' in payload_json:
+        library = payload_json['pip']
         try:
             os.chdir(current_path)
-            command = f"start cmd /k {libeary}"
+            command = f"start cmd /k {library}"
             subprocess.Popen(command, shell=True)
             return JSONResponse(content={'status': 'success', 'message': 'پنجره CMD باز شد و دستور در حال اجراست.'})
         except Exception as e:
@@ -62,7 +63,7 @@ async def get_path():
 
 @app.post("/set_json")
 async def set_json(request: Request):
-    global payloadJson
+    global payload_json
     try:
         data = await request.json()
         process_json(data)

@@ -1,33 +1,20 @@
 import os
 import json
 import shutil
-from datetime import datetime
 import configparser
 from .func import read_directory_path
 
 BACKUP_BASE_DIR = 'backups'
 new_v = False
-def getBackupDr():
-    current_path = read_directory_path()
-    BACKUP_DI = os.path.join(current_path, BACKUP_BASE_DIR)
-    return BACKUP_DI
+
 
 def get_backup_dir():
-    config_file_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.txt")
-    try:
-        with open(config_file_path, 'r') as file:
-            directory_path = file.readline().strip()
-            return os.path.join(directory_path, BACKUP_BASE_DIR)
-    except Exception as e:
-        print(f'Error reading directory path from file: {e}')
-        return BACKUP_BASE_DIR
-
-
+    return os.path.join(read_directory_path(), BACKUP_BASE_DIR)
 
 def get_next_version_number():
     global new_v
     config = configparser.ConfigParser()
-    config_file_path = os.path.join(getBackupDr(), 'backup_config.ini')
+    config_file_path = os.path.join(get_backup_dir(), 'backup_config.ini')
 
     if os.path.exists(config_file_path):
         config.read(config_file_path)
@@ -35,17 +22,18 @@ def get_next_version_number():
         next_version = last_version + 1
     else:
         next_version = 1
-    if new_v :
+    # اگر new_v True باشد، از آخرین نسخه استفاده کن بدون افزایش
+    if new_v:
         new_v = False
-    else :
-        if next_version > 1 :
-          next_version = next_version-1
-
+        next_version = last_version
     return next_version
+
+
+
 
 def update_version_number(version_number):
     config = configparser.ConfigParser()
-    config_file_path = os.path.join(getBackupDr(), 'backup_config.ini')
+    config_file_path = os.path.join(get_backup_dir(), 'backup_config.ini')
 
     config['BACKUP'] = {
         'last_version': str(version_number)
@@ -60,11 +48,11 @@ def create_backup(file_path):
         print(f"Error: File {file_path} not found!")
         return None
 
-    if not os.path.exists(getBackupDr()):
-        os.makedirs(getBackupDr())
+    if not os.path.exists(get_backup_dir()):
+        os.makedirs(get_backup_dir())
 
     version_number = get_next_version_number()
-    backup_dir_version = os.path.join(getBackupDr(), f'version_{version_number}')
+    backup_dir_version = os.path.join(get_backup_dir(), f'version_{version_number}')
     os.makedirs(backup_dir_version, exist_ok=True)
 
     # Calculate relative path
@@ -98,8 +86,7 @@ def apply_edits(file_path, edits):
 
 
     
-# اعمال تغییرات (نسخه جدید)
-
+    # اعمال تغییرات
     for edit in edits:
 
         total_lines = len(lines)
@@ -114,7 +101,7 @@ def apply_edits(file_path, edits):
 
         if new_code:
 
-            # تقسیم رشته چندخطی به لیست برای جایگزینی دقیق
+            # تقسیم رشته چندخطی به لیست برای جایگزینی دقیق - برای عدم ریخته شدن کد ها فقط در یک خط
 
             lines[start:end] = [line + '\n' for line in new_code.splitlines()]
 
@@ -151,8 +138,8 @@ def process_json(json_data):
             print("خطا: 'edits' باید یه لیست باشه!")
             return False
 
-        if not os.path.exists(getBackupDr()):
-            os.makedirs(getBackupDr())
+        if not os.path.exists(get_backup_dir()):
+            os.makedirs(get_backup_dir())
 
         for edit in edits_list:
             if not isinstance(edit, dict) or "path" not in edit or "edits" not in edit:
@@ -177,7 +164,7 @@ def process_json(json_data):
 def restore_backup(version_number):
     """Restore files from a specific backup version"""
     global new_v
-    backup_dir_version = os.path.join(getBackupDr(), f'version_{version_number}')
+    backup_dir_version = os.path.join(get_backup_dir(), f'version_{version_number}')
     if not os.path.exists(backup_dir_version):
         print(f'Error: Backup version {version_number} not found!')
         return False
