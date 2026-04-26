@@ -2,6 +2,7 @@ import os
 import json
 import shutil
 import configparser
+from pathlib import Path
 from .func import read_directory_path
 
 BACKUP_BASE_DIR = 'backups'
@@ -67,33 +68,44 @@ def create_backup(file_path):
 
     update_version_number(version_number)
     return version_number
+
 def apply_edits(file_path, edits):
-    """Apply changes to the specified file"""
-    # اگر فایل وجود ندارد، آن را بساز
+
+    # ساخت فایل اگر وجود نداشته باشه
+
     if not os.path.exists(file_path):
-        print(f"فایل {file_path} پیدا نشد، در حال ساخت فایل...")
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)  # ساخت دایرکتوری‌ها اگر وجود ندارند
+
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
         with open(file_path, "w", encoding="utf-8") as f:
-            f.write("")  # ساخت یک فایل خالی
-        print(f"فایل {file_path} با موفقیت ساخته شد")
 
-    # بکاپ قبل از اعمال تغییرات
-    create_backup(file_path)
-
-    # خواندن محتوای فایل (اگر خالی باشد، lines خالی خواهد بود)
-    with open(file_path, 'r', encoding='utf-8') as f:
-        lines = f.readlines()
-
+            f.write("")
 
     
+
+    # بکاپ
+
+    create_backup(file_path)
+
+    
+
+    # خواندن فایل
+
+    with open(file_path, 'r', encoding='utf-8') as f:
+
+        lines = f.readlines()
+
+    
+
     # اعمال تغییرات
+
     for edit in edits:
 
         total_lines = len(lines)
 
-        start = max(0, min(edit["start_number_line"] - 1, total_lines))  # خط شروع
+        start = max(0, edit["start_number_line"] - 1)
 
-        end = min(total_lines, edit["end_number_line"])  # خط پایان
+        end = min(total_lines, edit["end_number_line"])
 
         new_code = edit["new_code"]
 
@@ -101,22 +113,32 @@ def apply_edits(file_path, edits):
 
         if new_code:
 
-            # تقسیم رشته چندخطی به لیست برای جایگزینی دقیق - برای عدم ریخته شدن کد ها فقط در یک خط
+            # حفظ newlineها با splitlines و اضافه کردن \n به هر خط به جز آخرین
 
-            lines[start:end] = [line + '\n' for line in new_code.splitlines()]
+            new_lines = new_code.splitlines(keepends=True)
+
+            if not new_lines[-1].endswith('\n'):
+
+                new_lines[-1] += '\n'
+
+            lines[start:end] = new_lines
 
         else:
 
-            # در صورتی که نیاز به حذف کد باشد
-
             lines[start:end] = []
+
     
 
-    # نوشتن تغییرات در فایل
+    # نوشتن
+
     with open(file_path, "w", encoding="utf-8") as file:
+
         file.writelines(lines)
 
-    print(f"Changes successfully saved to {file_path}")
+    
+
+    print(f"Changes saved to {file_path}")
+
     return True
 
 
@@ -141,12 +163,29 @@ def process_json(json_data):
         if not os.path.exists(get_backup_dir()):
             os.makedirs(get_backup_dir())
 
+        base_dir = Path(read_directory_path()).resolve()
+
         for edit in edits_list:
             if not isinstance(edit, dict) or "path" not in edit or "edits" not in edit:
                 print("خطا: هر تغییر باید شامل 'path' و 'edits' باشه!")
                 continue
 
-            file_path = edit["path"].replace("\\", "/")
+            raw_path = edit["path"].replace("\\", "/")
+            candidate_path = Path(raw_path)
+            if not candidate_path.is_absolute():
+                candidate_path = base_dir / candidate_path
+
+            try:
+                resolved_path = candidate_path.resolve()
+            except Exception:
+                print(f"خطا: مسیر فایل نامعتبر است: {raw_path}")
+                continue
+
+            if base_dir not in resolved_path.parents and resolved_path != base_dir:
+                print(f"خطا: مسیر خارج از پوشه مجاز است و رد شد: {resolved_path}")
+                continue
+
+            file_path = str(resolved_path)
             if not isinstance(edit["edits"], list):
                 print(f"خطا: 'edits' برای {file_path} باید یه لیست باشه!")
                 continue

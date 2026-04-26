@@ -61,15 +61,23 @@ async def get_path():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/set_json")
 async def set_json(request: Request):
-    global payload_json
     try:
         data = await request.json()
-        process_json(data)
-        return JSONResponse(content={'status': 'success', 'message': 'درخواست اعمال تغییرات دریافت شد.'})
+        if not isinstance(data, dict) or "edits" not in data:
+            raise HTTPException(status_code=400, detail='داده JSON نامعتبر است.')
+        success = process_json(data)
+        if success:
+            return JSONResponse(content={'status': 'success', 'message': 'تغییرات اعمال شد.'})
+        else:
+            raise HTTPException(status_code=500, detail='خطا در اعمال تغییرات.')
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/set_path")
 async def set_path():

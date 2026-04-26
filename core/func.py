@@ -8,7 +8,7 @@ from openai import OpenAI
 load_dotenv()
 
 client = OpenAI(
-    base_url=os.getenv("BASE_URL"),
+    base_url= 'https://api.metisai.ir/api/v1/wrapper/grok',
     api_key=os.getenv("OPENAI_API_KEY")  # استفاده از متغیر محیطی برای امنیت
 )
 
@@ -138,30 +138,6 @@ def payload(user_text: str) -> dict:
 
     text_ListDirectory = json.dumps(json_list)
 
-    json_format = [{
-
-        "type": "",
-
-        "start_number_line": 0,
-
-        "code": "",
-
-        "Total_lines": 0,
-
-        "end_number_line": 1,
-
-        "new_code": ""
-
-    }]
-
-    json_format2 = [{"path": "",
-
-                 "edits": json_format,
-
-                 "info": "",
-
-                 "log": ""}]
-    
     
     instructions_path = os.path.join(os.path.dirname(__file__), 'instructions.txt')
     with open(instructions_path, 'r', encoding='utf-8') as f:
@@ -209,8 +185,8 @@ def payload(user_text: str) -> dict:
         # ارسال درخواست به OpenAI
         response = client.chat.completions.create(
             
-            model="grok-code-fast-1",  # یا مدل مورد نظر شما
-            #model="gemini-3.1-flash-lite-preview",
+            model="grok-code-fast-1",
+
             
             messages=messages,
             response_format={"type": "json_object"},
@@ -224,3 +200,6 @@ def payload(user_text: str) -> dict:
 
     except Exception as e:
         return {'error': str(e)}
+    
+#BASE_URL = https://api.metisai.ir/openai/v1  #OpenAi & gemini models
+#model = gemini-3.1-flash-lite-preview
