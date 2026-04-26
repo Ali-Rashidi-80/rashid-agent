@@ -103,7 +103,6 @@ async def set_json(request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @app.get("/set_path")
 @app.post("/set_path")
 async def set_path():
@@ -112,6 +111,7 @@ async def set_path():
     try:
         root = tk.Tk()
         root.withdraw()  # مخفی کردن پنجره اصلی
+        root.attributes('-topmost', True)  # تنظیم پنجره در بالاترین اولویت
         selected_directory = filedialog.askdirectory(title="یک پوشه را انتخاب کنید")
         if selected_directory:
             current_path = selected_directory

@@ -54,15 +54,20 @@ def write_directory_path(new_path):
 
 
 
+
 def fix_and_parse_json(response_data):
 
     if isinstance(response_data, dict):
 
         return response_data
 
+
+
     if not response_data or not isinstance(response_data, str):
 
         return {'error': 'Invalid or empty response data'}
+
+
 
     response_data = response_data.strip()
 
@@ -70,11 +75,27 @@ def fix_and_parse_json(response_data):
 
         return {'error': 'Response data is empty'}
 
-    # Extract JSON from code blocks
+
+
+    # 1. Try to parse the entire response as JSON first
+
+    try:
+
+        return json.loads(response_data)
+
+    except json.JSONDecodeError:
+
+        pass
+
+
+
+    # 2. Extract JSON from code blocks if direct parsing fails
 
     pattern = re.compile(r'```json(.*?)```', re.DOTALL | re.IGNORECASE)
 
     match = pattern.search(response_data)
+
+
 
     if match:
 
@@ -92,23 +113,45 @@ def fix_and_parse_json(response_data):
 
         else:
 
-            json_text = response_data
+            # Find the start of JSON
+
+            start = response_data.find('{')
+
+            if start == -1:
+
+                start = response_data.find('[')
+
+            
+
+            if start == -1:
+
+                return {'error': 'No JSON found in response'}
+
+            
+
+            # Extract from the first occurrence of { or [
+
+            json_text = response_data[start:].strip()
+
+
 
     if not json_text:
 
         return {'error': 'No JSON content found'}
 
-    # Clean up trailing commas in objects and arrays
+
+
+    # 3. Clean up and Fix structure
 
     json_text = re.sub(r',(\s*[}\]])', r'\1', json_text)
 
-    # Fix unclosed quotes (simple heuristic)
+    
 
     if json_text.count('"') % 2 != 0:
 
         json_text += '"'
 
-    # Fix unclosed braces and brackets
+
 
     open_braces = json_text.count('{') - json_text.count('}')
 
@@ -118,9 +161,13 @@ def fix_and_parse_json(response_data):
 
     json_text += ']' * open_brackets
 
+
+
     if json_text[0] not in ['{', '[']:
 
         return {'error': 'Response does not start with valid JSON structure'}
+
+
 
     try:
 
@@ -129,6 +176,7 @@ def fix_and_parse_json(response_data):
     except json.JSONDecodeError as e:
 
         return {'error': f'JSON decode error: {str(e)}'}
+
 
 
 

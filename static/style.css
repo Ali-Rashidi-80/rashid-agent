@@ -198,6 +198,11 @@ button:hover {
     padding: 16px;
     max-height: 70vh;
     overflow: auto;
+    overflow-x: hidden;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    max-width: 100%;
 }
 
 .result-section {
@@ -206,6 +211,12 @@ button:hover {
     border-radius: 12px;
     padding: 14px;
     margin-bottom: 14px;
+    max-width: 100%;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
 .result-section h3 {
@@ -247,6 +258,12 @@ button:hover {
     background: rgba(34, 34, 34, 0.75);
     border-radius: 10px;
     padding: 12px;
+    max-width: 100%;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
 .edit-card-header {
@@ -376,7 +393,6 @@ button:hover {
 
 
 
-
 /* بهبود نمایش کد با Prism */
 
 pre {
@@ -385,7 +401,7 @@ pre {
 
     word-wrap: break-word !important;
 
-    overflow-x: auto;
+    overflow-x: hidden;
 
     background-color: #141417;
 
@@ -404,6 +420,8 @@ pre {
     position: relative;
     margin: 0;
 
+    direction: ltr;
+
 }
 
 
@@ -420,18 +438,27 @@ code {
 
     font-size: 13px;
 
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
+
+    direction: ltr;
+
 }
 
-
 /* استایل برای کانتینر کد و دکمه کپی */
-
 .code-container {
     position: relative;
     margin-bottom: 10px;
     border: 1px solid rgba(125, 88, 255, 0.25);
     border-radius: 10px;
     overflow: hidden;
+    overflow-x: hidden;
     background: #111318;
+    max-width: 100%;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
 }
 
 .code-header {
@@ -469,6 +496,7 @@ code {
     opacity: 0.95;
     transition: transform 0.2s ease, opacity 0.2s ease, background 0.3s;
     z-index: 10;
+    margin-top: 2px;
 }
 
 
@@ -567,3 +595,15 @@ code {
     }
 }
 
+.language-markdown {
+    direction: ltr;
+}
+
+.language-markdown pre,
+.language-markdown code {
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    overflow-x: hidden !important;
+    max-width: 100%;
+}
