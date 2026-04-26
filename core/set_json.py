@@ -16,6 +16,7 @@ def get_next_version_number():
     global new_v
     config = configparser.ConfigParser()
     config_file_path = os.path.join(get_backup_dir(), 'backup_config.ini')
+    last_version = 0
 
     if os.path.exists(config_file_path):
         config.read(config_file_path)
@@ -100,14 +101,25 @@ def apply_edits(file_path, edits):
     # اعمال تغییرات
 
     for edit in edits:
+        if not isinstance(edit, dict):
+            print(f"خطا: ساختار ویرایش نامعتبر است: {edit}")
+            continue
+
+        if "start_number_line" not in edit or "end_number_line" not in edit:
+            print("خطا: start_number_line یا end_number_line وجود ندارد.")
+            continue
+
+        if not isinstance(edit["start_number_line"], int) or not isinstance(edit["end_number_line"], int):
+            print("خطا: شماره خطوط باید عدد صحیح باشند.")
+            continue
 
         total_lines = len(lines)
 
         start = max(0, edit["start_number_line"] - 1)
 
-        end = min(total_lines, edit["end_number_line"])
+        end = min(total_lines, max(start, edit["end_number_line"]))
 
-        new_code = edit["new_code"]
+        new_code = edit.get("new_code", "")
 
         
 
@@ -160,10 +172,21 @@ def process_json(json_data):
             print("خطا: 'edits' باید یه لیست باشه!")
             return False
 
-        if not os.path.exists(get_backup_dir()):
-            os.makedirs(get_backup_dir())
+        backup_dir = get_backup_dir()
+        if not os.path.exists(backup_dir):
+            os.makedirs(backup_dir)
 
-        base_dir = Path(read_directory_path()).resolve()
+        directory_path = read_directory_path()
+        if not directory_path:
+            print("خطا: مسیر پروژه در config.txt تنظیم نشده است.")
+            return False
+
+        base_dir = Path(directory_path).resolve()
+        if not base_dir.exists() or not base_dir.is_dir():
+            print(f"خطا: مسیر پروژه معتبر نیست: {base_dir}")
+            return False
+
+        applied_any = False
 
         for edit in edits_list:
             if not isinstance(edit, dict) or "path" not in edit or "edits" not in edit:
@@ -192,10 +215,11 @@ def process_json(json_data):
 
             if apply_edits(file_path, edit["edits"]):
                 print(f"تغییرات با موفقیت برای {file_path} اعمال شد")
+                applied_any = True
             else:
                 print(f"خطا در پردازش تغییرات برای {file_path}")
 
-        return True
+        return applied_any
     except Exception as e:
         print(f"خطا در پردازش داده JSON: {e}")
         return False

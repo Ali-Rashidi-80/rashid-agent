@@ -133,8 +133,11 @@ def fix_and_parse_json(response_data):
 
 
 def payload(user_text: str) -> dict:
+    directory_path = read_directory_path()
+    if not directory_path or not os.path.isdir(directory_path):
+        return {"error": "مسیر پروژه معتبر نیست. ابتدا مسیر پروژه را تنظیم کنید."}
 
-    json_list, json_info = list_files_in_directory(read_directory_path())
+    json_list, json_info = list_files_in_directory(directory_path)
 
     text_ListDirectory = json.dumps(json_list)
 
@@ -190,7 +193,8 @@ def payload(user_text: str) -> dict:
             
             messages=messages,
             response_format={"type": "json_object"},
-            temperature=0.3131412
+            temperature=0.3131412,
+            timeout=120
         )
 
         generated_text = response.choices[0].message.content

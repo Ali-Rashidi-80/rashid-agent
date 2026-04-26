@@ -1,34 +1,209 @@
 // ارسال فرم و دریافت پاسخ
 let currentData = null;
+const API_BASE = window.location.origin;
+const ui = {
+  form: document.getElementById('dataForm'),
+  input: document.getElementById('textInput'),
+  output: document.getElementById('output'),
+  submitBtn: document.getElementById('submitBtn'),
+  applyBtn: document.getElementById('applyChangesBtn'),
+  statusBar: document.getElementById('statusBar'),
+  pathDisplay: document.getElementById('selectedPathDisplay'),
+  choosePathBtn: document.getElementById('choosePathBtn'),
+  refreshPathBtn: document.getElementById('refreshPathBtn'),
+  clearOutputBtn: document.getElementById('clearOutputBtn')
+};
+const STORAGE_KEYS = {
+  prompt: 'maho_prompt',
+  selectedPath: 'maho_selected_path'
+};
 
-document.getElementById('dataForm').addEventListener('submit', async function(event) {
+function setStatus(message, type = 'default') {
+  if (!ui.statusBar) return;
+  ui.statusBar.textContent = message;
+  ui.statusBar.classList.remove('ok', 'warn', 'error');
+  if (type === 'ok' || type === 'warn' || type === 'error') {
+    ui.statusBar.classList.add(type);
+  }
+}
+
+function saveToStorage(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch (_) {
+    // ignore storage failure
+  }
+}
+
+function readFromStorage(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch (_) {
+    return null;
+  }
+}
+
+function renderLoadingSkeleton() {
+  return `
+    <div class="item output-card">
+      <section class="result-section skeleton-card">
+        <div class="skeleton-line w-40"></div>
+        <div class="skeleton-line w-90"></div>
+        <div class="skeleton-line w-80"></div>
+      </section>
+      <section class="result-section skeleton-card">
+        <div class="skeleton-line w-55"></div>
+        <div class="skeleton-code"></div>
+      </section>
+    </div>
+  `;
+}
+
+function setLoading(loading, message = 'در حال پردازش...', resetStatusOnFinish = false) {
+  if (ui.submitBtn) {
+    ui.submitBtn.disabled = loading;
+    ui.submitBtn.textContent = loading ? 'در حال ارسال...' : 'ارسال';
+  }
+  if (ui.applyBtn && loading) {
+    ui.applyBtn.disabled = true;
+  }
+  if (ui.choosePathBtn) ui.choosePathBtn.disabled = loading;
+  if (ui.refreshPathBtn) ui.refreshPathBtn.disabled = loading;
+  if (loading) {
+    setStatus(message, 'warn');
+  } else if (resetStatusOnFinish) {
+    setStatus('آماده');
+  }
+}
+
+function escapeForMarkdown(value) {
+  if (value === null || value === undefined) return '';
+  return String(value).replace(/[&<>]/g, (ch) => (
+    ch === '&' ? '&amp;' : ch === '<' ? '&lt;' : '&gt;'
+  ));
+}
+
+function escapeHtml(value) {
+  if (value === null || value === undefined) return '';
+  return String(value).replace(/[&<>"']/g, (ch) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[ch]));
+}
+
+function getPrettyLanguage(lang) {
+  const map = {
+    js: 'JavaScript',
+    javascript: 'JavaScript',
+    ts: 'TypeScript',
+    typescript: 'TypeScript',
+    py: 'Python',
+    python: 'Python',
+    cpp: 'C++',
+    c: 'C',
+    css: 'CSS',
+    html: 'HTML',
+    json: 'JSON',
+    md: 'Markdown',
+    markdown: 'Markdown',
+    text: 'Text',
+    jsx: 'JSX'
+  };
+  return map[(lang || '').toLowerCase()] || (lang || 'Code');
+}
+
+function countCodeLines(code) {
+  if (!code) return 0;
+  return String(code).split('\n').length;
+}
+
+async function parseErrorResponse(response) {
+  try {
+    const body = await response.json();
+    if (body?.detail) return body.detail;
+    if (body?.message) return body.message;
+  } catch (_) {
+    // Ignore JSON parsing error and fallback to HTTP status
+  }
+  return `HTTP error! status: ${response.status}`;
+}
+
+ui.form.addEventListener('submit', async function(event) {
   event.preventDefault();
-  const text = document.getElementById('textInput').value;
-  const outputDiv = document.getElementById('output');
+  const text = ui.input.value.trim();
+  const outputDiv = ui.output;
+  if (!text) {
+    setStatus('متن درخواست خالی است.', 'warn');
+    return;
+  }
 
-  outputDiv.innerHTML = '<p style="color: #b0b0b0;">در حال پردازش...</p>';
+  setLoading(true, 'در حال تولید پاسخ...');
+  outputDiv.innerHTML = renderLoadingSkeleton();
 
   try {
-    const response = await fetch('http://127.0.0.1:8000/generate', {
+    const response = await fetch(`${API_BASE}/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text })
     });
 
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    if (!response.ok) throw new Error(await parseErrorResponse(response));
     const data = await response.json();
 
     // ذخیره پاسخ در متغیر گلوبال
     currentData = data; 
 
     outputDiv.innerHTML = formatJsonToItems(data);
-    document.getElementById('applyChangesBtn').style.display = 'block';
+    ui.applyBtn.disabled = !(Array.isArray(data.edits) && data.edits.length > 0);
+    setStatus('پاسخ دریافت شد. در صورت نیاز می‌توانید تغییرات را اعمال کنید.', 'ok');
     attachApplyChangesListener();
   } catch (error) {
     console.error('Error:', error);
     outputDiv.innerHTML = `<p style="color: #ff6b6b;">خطا در ارسال داده‌ها: ${error.message}</p>`;
+    setStatus(`خطا در تولید پاسخ: ${error.message}`, 'error');
+  } finally {
+    setLoading(false);
   }
 });
+
+ui.input.addEventListener('keydown', (event) => {
+  if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+    event.preventDefault();
+    ui.form.requestSubmit();
+  }
+});
+
+let savePromptTimer = null;
+ui.input.addEventListener('input', () => {
+  clearTimeout(savePromptTimer);
+  savePromptTimer = setTimeout(() => {
+    saveToStorage(STORAGE_KEYS.prompt, ui.input.value);
+  }, 250);
+});
+
+if (ui.choosePathBtn) {
+  ui.choosePathBtn.addEventListener('click', () => {
+    requestNewPathFromServer();
+  });
+}
+
+if (ui.refreshPathBtn) {
+  ui.refreshPathBtn.addEventListener('click', () => {
+    checkAndSelectPath();
+  });
+}
+
+if (ui.clearOutputBtn) {
+  ui.clearOutputBtn.addEventListener('click', () => {
+    ui.output.innerHTML = '';
+    currentData = null;
+    if (ui.applyBtn) ui.applyBtn.disabled = true;
+    setStatus('خروجی پاک شد.', 'ok');
+  });
+}
 
 
 
@@ -36,150 +211,119 @@ document.getElementById('dataForm').addEventListener('submit', async function(ev
 
 // تابع برای تبدیل JSON به آیتم‌ها با استفاده از Markdown
 
-function formatJsonToItems(data) {
-
-  let markdown = '';
-
-
-
-  if (data.message) {
-
-    markdown += `## پیام:\n${data.message}\n\n`;
-
-  }
-
-
-
-  if (data.pip && data.pip.trim() !== '') {
-
-    markdown += `## کتاب‌خونه‌ها:\n${data.pip}\n\n<button id="install-lib-button" style="display:block; margin-top: 10px;">نصب کتابخانه‌ها</button>\n\n`;
-
-  }
-
-
-
-  if (data.log) {
-
-    markdown += `## گزارش:\n${data.log}\n\n`;
-
-  }
-
-
-
-
-if (data.edits && Array.isArray(data.edits)) {
-
-  data.edits.forEach((edit, index) => {
-
-
-
-    markdown += `### ویرایش ${index + 1}:
-
-- مسیر: ${edit.path || 'نامشخص'}
-
-- گزارش: ${edit.log || 'بدون گزارش'}
-
-- توضیحات: ${edit.info || 'بدون توضیحات'}
-
-
-
-`;
-
-
-
-    if (edit.edits && Array.isArray(edit.edits)) {
-
-
-
-      edit.edits.forEach((subEdit, subIndex) => {
-
-
-
-        let language = 'auto';
-
-        if (edit.path.endsWith('.md')) {
-
-          language = 'markdown';
-
-        } else if (edit.path === '.gitignore') {
-
-          language = 'text';
-
-        } else {
-
-          language = detectLanguage(subEdit.new_code);
-
-        }
-
-
-
-        markdown += `#### ویرایش ${subIndex + 1}:
-
-- خطوط: ${subEdit.start_number_line || '؟'} تا ${subEdit.end_number_line || '؟'}
-
-- نوع: ${subEdit.type || 'نامشخص'}
-
-
-
-کد جدید:
-
-
-
-\`\`\`${language}
-
-${subEdit.new_code || 'بدون کد'}
-
-\`\`\`
-
-
-
-`;
-
-
-
-      });
-
-
-
-    }
-
-
-
-  });
-
+function renderCodeBlock(code, language, title) {
+  const codeText = code || 'بدون کد';
+  const safeId = `code-${Math.random().toString(36).slice(2, 10)}`;
+  const safeLanguage = escapeHtml(language || 'text');
+  const lineCount = countCodeLines(codeText);
+  const headerTitle = title || 'کد جدید';
+  return `
+    <section class="code-container">
+      <div class="code-header">
+        <span class="code-title">${escapeHtml(headerTitle)}</span>
+        <span class="code-meta">${escapeHtml(getPrettyLanguage(language))} • ${lineCount} خط</span>
+        <button class="copy-btn" type="button" data-copy-target="${safeId}" aria-label="کپی کد">
+          <span class="copy-btn-text">کپی</span>
+        </button>
+      </div>
+      <pre><code id="${safeId}" class="language-${safeLanguage}">${escapeHtml(codeText)}</code></pre>
+    </section>
+  `;
 }
 
+function formatJsonToItems(data) {
+  const sections = [];
 
-  let html = marked.parse(markdown);
+  if (data.message) {
+    sections.push(`
+      <section class="result-section">
+        <h3>پیام</h3>
+        <p>${escapeHtml(data.message)}</p>
+      </section>
+    `);
+  }
 
+  if (data.pip && data.pip.trim() !== '') {
+    sections.push(`
+      <section class="result-section">
+        <h3>کتاب‌خونه‌ها</h3>
+        <div class="pip-box">${escapeHtml(data.pip)}</div>
+        <button id="install-lib-button" class="inline-action-btn" type="button">نصب کتابخانه‌ها</button>
+      </section>
+    `);
+  }
 
+  if (data.log) {
+    sections.push(`
+      <section class="result-section">
+        <h3>گزارش</h3>
+        <p>${escapeHtml(data.log)}</p>
+      </section>
+    `);
+  }
 
-  // اعمال syntax highlighting با Prism
-  html = html.replace(/<pre><code class="language-([^"]*)">([\s\S]*?)<\/code><\/pre>/g, (match, lang, code) => {
+  if (Array.isArray(data.edits) && data.edits.length > 0) {
+    const editsHtml = data.edits.map((edit, index) => {
+      const path = edit?.path || 'نامشخص';
+      const info = edit?.info || 'بدون توضیحات';
+      const log = edit?.log || 'بدون گزارش';
+      const subEdits = Array.isArray(edit?.edits) ? edit.edits : [];
+      const subEditsHtml = subEdits.map((subEdit, subIndex) => {
+        let language = 'text';
+        if (typeof path === 'string' && path.endsWith('.md')) {
+          language = 'markdown';
+        } else if (path === '.gitignore') {
+          language = 'text';
+        } else {
+          language = detectLanguage(subEdit?.new_code || '');
+        }
+        return `
+          <article class="sub-edit-card">
+            <div class="sub-edit-meta">
+              <span>ویرایش ${subIndex + 1}</span>
+              <span>خطوط ${escapeHtml(subEdit?.start_number_line || '؟')} تا ${escapeHtml(subEdit?.end_number_line || '؟')}</span>
+              <span>نوع: ${escapeHtml(subEdit?.type || 'نامشخص')}</span>
+            </div>
+            ${renderCodeBlock(subEdit?.new_code || 'بدون کد', language, 'کد جدید')}
+          </article>
+        `;
+      }).join('');
 
-    return `<div class="code-container"><button class="copy-btn" onclick="copyToClipboard(this)">کپی</button><pre><code class="language-${lang}">${code}</code></pre></div>`;
+      return `
+        <article class="edit-card">
+          <header class="edit-card-header">
+            <h4>ویرایش ${index + 1}</h4>
+            <code class="path-chip">${escapeHtml(path)}</code>
+          </header>
+          <div class="edit-details">
+            <p><strong>گزارش:</strong> ${escapeHtml(log)}</p>
+            <p><strong>توضیحات:</strong> ${escapeHtml(info)}</p>
+          </div>
+          <div class="sub-edits">${subEditsHtml || '<p class="empty-subedits">ویرایشی ثبت نشده است.</p>'}</div>
+        </article>
+      `;
+    }).join('');
 
-  });
+    sections.push(`
+      <section class="result-section">
+        <h3>تغییرات پیشنهادی</h3>
+        <div class="edits-grid">${editsHtml}</div>
+      </section>
+    `);
+  }
 
+  if (sections.length === 0) {
+    sections.push('<section class="result-section"><p>خروجی قابل نمایشی دریافت نشد.</p></section>');
+  }
 
-  
-
-  html = `<div class="item">${html}</div>`;
-
-
+  const html = `<div class="item output-card">${sections.join('')}</div>`;
 
   setTimeout(() => {
-
     attachInstallButtonListener();
-
     Prism.highlightAll();
-
   }, 0);
 
-
-
   return html;
-
 }
 
 
@@ -187,6 +331,9 @@ ${subEdit.new_code || 'بدون کد'}
 // تابع کمکی برای تشخیص زبان
 
 function detectLanguage(code) {
+  if (typeof code !== 'string' || code.trim() === '') {
+    return 'text';
+  }
 
   // React/JSX
 
@@ -252,14 +399,19 @@ function detectLanguage(code) {
 function attachInstallButtonListener() {
   const installButton = document.getElementById('install-lib-button');
   if (installButton) {
-    installButton.addEventListener('click', async () => {
+    installButton.replaceWith(installButton.cloneNode(true));
+    const installButtonFresh = document.getElementById('install-lib-button');
+    if (!installButtonFresh) return;
+
+    installButtonFresh.addEventListener('click', async () => {
       try {
-        const response = await fetch('http://127.0.0.1:8000/pip');
+        const response = await fetch(`${API_BASE}/pip`);
+        if (!response.ok) throw new Error(await parseErrorResponse(response));
         const data = await response.json();
-        alert(data.status === 'success' ? 'کتابخانه‌ها با موفقیت نصب شدند.' : `خطا در نصب کتابخانه‌ها: ${data.error || 'نامشخص'}`);
+        alert(data.status === 'success' ? 'کتابخانه‌ها با موفقیت نصب شدند.' : `خطا در نصب کتابخانه‌ها: ${data.detail || data.error || 'نامشخص'}`);
       } catch (error) {
         console.error('Error:', error);
-        alert('مشکلی در برقراری ارتباط با سرور پیش آمده.');
+        alert(`مشکلی در نصب کتابخانه‌ها پیش آمد: ${error.message}`);
       }
     });
   }
@@ -278,22 +430,31 @@ function attachApplyChangesListener() {
 
 
 async function handleApplyChanges() {
+  if (!currentData || !Array.isArray(currentData.edits) || currentData.edits.length === 0) {
+    alert('تغییری برای اعمال وجود ندارد.');
+    return;
+  }
+
   try {
-    const response = await fetch('http://127.0.0.1:8000/set_json', {
+    setLoading(true, 'در حال اعمال تغییرات...');
+    const response = await fetch(`${API_BASE}/set_json`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(getEditsFromPage())
     });
 
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    if (!response.ok) throw new Error(await parseErrorResponse(response));
     const data = await response.json();
 
-    alert('تغییرات با موفقیت اعمال شد.');
+    setStatus('تغییرات با موفقیت اعمال شد.', 'ok');
     await populateBackupVersions();
     console.log('پاسخ از سرور:', data);
   } catch (error) {
     console.error('خطا در ارسال درخواست:', error);
-    alert(`خطا در ارسال درخواست اعمال تغییرات: ${error.message}`);
+    setStatus(`خطا در اعمال تغییرات: ${error.message}`, 'error');
+  } finally {
+    setLoading(false);
+    ui.applyBtn.disabled = !(currentData && Array.isArray(currentData.edits) && currentData.edits.length > 0);
   }
 }
 
@@ -312,21 +473,29 @@ function getEditsFromPage() {
 
 async function populateBackupVersions() {
   try {
-    const response = await fetch('http://127.0.0.1:8000/list_versions');
+    const response = await fetch(`${API_BASE}/list_versions`);
+    if (!response.ok) throw new Error(await parseErrorResponse(response));
     const data = await response.json();
     const versionDropdown = document.getElementById('backupVersion');
     if (versionDropdown) {
-      versionDropdown.innerHTML = data.versions.map(version =>
+      const versions = Array.isArray(data.versions) ? data.versions : [];
+      versionDropdown.innerHTML = versions.map(version =>
         `<option value="${version}">Version ${version}</option>`
       ).join('');
     }
   } catch (error) {
     console.error('Error fetching backup versions:', error);
+    setStatus(`خطا در دریافت نسخه‌های بکاپ: ${error.message}`, 'warn');
   }
 }
 
 function showRestoreDialog() {
-  const version = document.getElementById('backupVersion').value;
+  const versionDropdown = document.getElementById('backupVersion');
+  const version = versionDropdown?.value;
+  if (!version) {
+    setStatus('نسخه‌ای برای بازیابی پیدا نشد.', 'warn');
+    return;
+  }
   if (confirm(`آیا مطمئن هستید که می‌خواهید نسخه ${version} را بازیابی کنید؟`)) {
     restoreBackup(version);
   }
@@ -334,12 +503,13 @@ function showRestoreDialog() {
 
 async function restoreBackup(version) {
   try {
-    const response = await fetch(`http://127.0.0.1:8000/restore_version/${version}`, { method: 'POST' });
+    const response = await fetch(`${API_BASE}/restore_version/${version}`, { method: 'POST' });
+    if (!response.ok) throw new Error(await parseErrorResponse(response));
     const data = await response.json();
-    alert(data.message || 'نسخه با موفقیت بازیابی شد.');
+    setStatus(data.message || 'نسخه با موفقیت بازیابی شد.', 'ok');
   } catch (error) {
     console.error('Error restoring version:', error);
-    alert('خطا در بازیابی نسخه.');
+    setStatus('خطا در بازیابی نسخه.', 'error');
   }
 }
 
@@ -347,9 +517,11 @@ function createBackupRestoreElements() {
   const formContainer = document.querySelector('.form-container') || document.body;
 
   formContainer.insertAdjacentHTML('beforeend', `
-    <label for="backupVersion">انتخاب نسخه بکاپ:</label>
-    <select id="backupVersion" name="backupVersion"></select>
-    <button type="button" id="restoreBackupBtn" style="background-color: #dc3545; border-color: #dc3545; color: white;">بازیابی بکاپ</button>
+    <div class="backup-tools">
+      <label for="backupVersion">انتخاب نسخه بکاپ:</label>
+      <select id="backupVersion" name="backupVersion"></select>
+      <button type="button" id="restoreBackupBtn" class="danger-btn">بازیابی بکاپ</button>
+    </div>
   `);
 
   document.getElementById('restoreBackupBtn').addEventListener('click', showRestoreDialog);
@@ -364,17 +536,22 @@ function createBackupRestoreElements() {
 
 async function requestNewPathFromServer() {
   try {
-    const response = await fetch('http://127.0.0.1:8000/set_path');
+    setLoading(true, 'در حال انتخاب مسیر پروژه...');
+    const response = await fetch(`${API_BASE}/set_path`, { method: 'POST' });
+    if (!response.ok) throw new Error(await parseErrorResponse(response));
     const data = await response.json();
     if (data.status === 'success' && data.path) {
       displaySelectedPath(data.path);
-      console.log('✅ مسیر جدید:', data.path);
+      setStatus('مسیر پروژه با موفقیت به‌روزرسانی شد.', 'ok');
       await populateBackupVersions();
     } else {
-      console.error('❌ خطا در دریافت مسیر:', data.error || data.message);
+      throw new Error(data.error || data.message || 'خطا در به‌روزرسانی مسیر');
     }
   } catch (error) {
     console.error('⚠️ خطا:', error);
+    setStatus(`خطا در انتخاب مسیر: ${error.message}`, 'error');
+  } finally {
+    setLoading(false);
   }
 }
 
@@ -385,27 +562,37 @@ function displaySelectedPath(path) {
     displayDiv.id = 'selectedPathDisplay';
     document.body.appendChild(displayDiv);
   }
-  displayDiv.innerHTML = `📂 <strong>مسیر انتخاب شده:</strong> ${path}`;
-  displayDiv.style.cursor = 'pointer';
-  displayDiv.onclick = requestNewPathFromServer;
+  displayDiv.innerHTML = `📂 <strong>مسیر فعال پروژه:</strong> ${escapeForMarkdown(path)}`;
+  if (path) saveToStorage(STORAGE_KEYS.selectedPath, String(path));
 }
 
 async function checkAndSelectPath() {
   try {
-    const response = await fetch('http://127.0.0.1:8000/path');
+    const response = await fetch(`${API_BASE}/path`);
+    if (!response.ok) throw new Error(await parseErrorResponse(response));
     const data = await response.json();
     if (data.path) {
       displaySelectedPath(data.path);
+      setStatus('مسیر پروژه آماده است.', 'ok');
     } else {
       await requestNewPathFromServer();
     }
   } catch (error) {
     console.error('⚠️ خطا در دریافت مسیر:', error);
+    setStatus(`خطا در دریافت مسیر: ${error.message}`, 'warn');
   }
 }
 
 // اجرای تابع به صورت غیرهمزمان
 (async () => {
+  const savedPrompt = readFromStorage(STORAGE_KEYS.prompt);
+  if (savedPrompt && ui.input && !ui.input.value) {
+    ui.input.value = savedPrompt;
+  }
+  const savedPath = readFromStorage(STORAGE_KEYS.selectedPath);
+  if (savedPath) {
+    displaySelectedPath(savedPath);
+  }
   await checkAndSelectPath();
 })();
 
@@ -424,17 +611,51 @@ for (let i = 0; i < 200; i++) {
 }
 
 
+document.addEventListener('click', (event) => {
+  const button = event.target.closest('.copy-btn');
+  if (!button) return;
+  copyToClipboard(button);
+});
+
+async function writeClipboardText(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.style.position = 'fixed';
+  textarea.style.left = '-9999px';
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  const copied = document.execCommand('copy');
+  document.body.removeChild(textarea);
+  if (!copied) {
+    throw new Error('copy-fallback-failed');
+  }
+}
+
 // تابع کپی به کلیپ‌بورد
 function copyToClipboard(button) {
-  const codeElement = button.nextElementSibling.querySelector('code');
+  const targetId = button.dataset.copyTarget;
+  const codeElement = targetId ? document.getElementById(targetId) : null;
+  if (!codeElement) {
+    setStatus('کد برای کپی یافت نشد.', 'warn');
+    return;
+  }
+
   const text = codeElement.textContent || codeElement.innerText;
-  navigator.clipboard.writeText(text).then(() => {
-    button.textContent = 'کپی شد!';
+  writeClipboardText(text).then(() => {
+    const label = button.querySelector('.copy-btn-text');
+    if (label) label.textContent = 'کپی شد';
+    button.classList.add('copied');
     setTimeout(() => {
-      button.textContent = 'کپی';
-    }, 2000);
+      if (label) label.textContent = 'کپی';
+      button.classList.remove('copied');
+    }, 1600);
   }).catch(err => {
     console.error('خطا در کپی: ', err);
-    alert('کپی ناموفق بود.');
+    setStatus('کپی ناموفق بود.', 'error');
   });
 }

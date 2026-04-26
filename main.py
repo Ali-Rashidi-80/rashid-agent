@@ -1,5 +1,6 @@
 import os
 import glob
+import re
 import webbrowser
 import subprocess
 import tkinter as tk
@@ -24,6 +25,15 @@ payload_json = {}
 library = ""
 current_path = read_directory_path()
 
+
+def get_valid_project_path() -> str:
+    global current_path
+    path = current_path or read_directory_path()
+    if not path or not os.path.isdir(path):
+        raise HTTPException(status_code=400, detail='مسیر پروژه تنظیم نشده یا معتبر نیست')
+    current_path = path
+    return current_path
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
@@ -31,11 +41,16 @@ async def index(request: Request):
 @app.post("/generate")
 async def handle_request(request: Request):
     global payload_json
-    data = await request.json()
+    try:
+        data = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail='بدنه درخواست JSON معتبر نیست')
     user_text = data.get('text')
-    if not user_text:
+    if not isinstance(user_text, str) or not user_text.strip():
         raise HTTPException(status_code=400, detail='متن ورودی یافت نشد')
-    payload_json = payload(user_text)
+    payload_json = payload(user_text.strip())
+    if isinstance(payload_json, dict) and payload_json.get("error"):
+        raise HTTPException(status_code=502, detail=str(payload_json["error"]))
     return JSONResponse(content=payload_json)
 
 @app.get("/pip")
@@ -43,11 +58,20 @@ async def cmd():
     global library, current_path
     if 'pip' in payload_json:
         library = payload_json['pip']
+        if not isinstance(library, str) or not library.strip():
+            raise HTTPException(status_code=400, detail='دستور pip نامعتبر است')
+        safe_command = library.strip()
+        if not safe_command.lower().startswith("pip install"):
+            raise HTTPException(status_code=400, detail='فقط دستور pip install مجاز است')
+        if not re.fullmatch(r"pip install[\w\s\-\.\[\]=<>!~:,/]+", safe_command, flags=re.IGNORECASE):
+            raise HTTPException(status_code=400, detail='دستور pip شامل کاراکتر غیرمجاز است')
         try:
-            os.chdir(current_path)
-            command = f"start cmd /k {library}"
+            os.chdir(get_valid_project_path())
+            command = f"start cmd /k {safe_command}"
             subprocess.Popen(command, shell=True)
             return JSONResponse(content={'status': 'success', 'message': 'پنجره CMD باز شد و دستور در حال اجراست.'})
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     else:
@@ -55,9 +79,10 @@ async def cmd():
 
 @app.get("/path")
 async def get_path():
-    global current_path
     try:
-        return JSONResponse(content={'path': current_path})
+        return JSONResponse(content={'path': get_valid_project_path()})
+    except HTTPException:
+        return JSONResponse(content={'path': None})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -80,29 +105,41 @@ async def set_json(request: Request):
 
 
 @app.get("/set_path")
+@app.post("/set_path")
 async def set_path():
     global current_path
+    root = None
     try:
         root = tk.Tk()
         root.withdraw()  # مخفی کردن پنجره اصلی
         selected_directory = filedialog.askdirectory(title="یک پوشه را انتخاب کنید")
-        root.destroy()
         if selected_directory:
             current_path = selected_directory
             write_directory_path(current_path)
             return JSONResponse(content={'status': 'success', 'path': current_path})
         else:
             raise HTTPException(status_code=400, detail='هیچ مسیری انتخاب نشد')
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if root is not None:
+            try:
+                root.destroy()
+            except Exception:
+                pass
 
 @app.get("/list_versions")
 async def list_versions():
-    backup_dir = os.path.join(read_directory_path(), 'backups')
+    backup_dir = os.path.join(get_valid_project_path(), 'backups')
     versions = []
     if os.path.exists(backup_dir):
         version_dirs = glob.glob(os.path.join(backup_dir, 'version_*'))
-        versions = [os.path.basename(version_dir).split('_')[1] for version_dir in version_dirs]
+        versions = sorted(
+            [os.path.basename(version_dir).split('_')[1] for version_dir in version_dirs],
+            key=lambda x: int(x) if str(x).isdigit() else float("inf")
+        )
     return JSONResponse(content={'versions': versions})
 
 @app.post("/restore_version/{version}")
