@@ -36,7 +36,7 @@ def get_valid_project_path() -> str:
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="index.html", context={"request": request})
 
 @app.post("/generate")
 async def handle_request(request: Request):
