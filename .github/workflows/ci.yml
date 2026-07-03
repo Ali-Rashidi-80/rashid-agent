@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  push:
+    branches: [main, feature/rashid-agent-v2]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: rashid
+          POSTGRES_PASSWORD: rashid
+          POSTGRES_DB: rashid
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U rashid -d rashid"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[dev]"
+      - run: python -m ruff check backend
+      - name: Migrate database
+        working-directory: backend
+        run: python -m alembic upgrade head
+        env:
+          PYTHONPATH: .
+          DATABASE_URL: postgresql+asyncpg://rashid:rashid@localhost:5432/rashid
+      - name: Start ARQ worker
+        run: |
+          cd backend
+          python -m arq worker.settings.WorkerSettings &
+          echo $! > /tmp/rashid-worker.pid
+          sleep 4
+        env:
+          PYTHONPATH: .
+          DATABASE_URL: postgresql+asyncpg://rashid:rashid@localhost:5432/rashid
+          REDIS_URL: redis://localhost:6379/0
+          ARQ_REDIS_URL: redis://localhost:6379/1
+      - run: python -m pytest backend/tests -v --tb=short
+        env:
+          DATABASE_URL: postgresql+asyncpg://rashid:rashid@localhost:5432/rashid
+          REDIS_URL: redis://localhost:6379/0
+          ARQ_REDIS_URL: redis://localhost:6379/1
+      - name: Stop ARQ worker
+        if: always()
+        run: |
+          if [ -f /tmp/rashid-worker.pid ]; then
+            kill "$(cat /tmp/rashid-worker.pid)" || true
+          fi
+
+  test-frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm ci
+      - name: Verify frontend lib sources
+        run: pwsh -File scripts/verify-frontend-lib.ps1
+        working-directory: ..
+      - run: npm test
+      - run: npm run lint
+      - run: npm run build
+
+  test-e2e:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm ci
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e
+        env:
+          CI: true
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000

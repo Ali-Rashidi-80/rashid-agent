@@ -14,7 +14,7 @@ develop-eggs/
 downloads/
 eggs/
 .eggs/
-lib/
+/lib/
 lib64/
 parts/
 sdist/
@@ -153,8 +153,23 @@ static/lib/
 # Templates (if not needed)
 # templates/
 
-# Config files
-config.txt
+# Monorepo
+frontend/node_modules/
+frontend/.next/
+!frontend/src/lib/
+!frontend/src/lib/**
+.pgdata/
+
+# Python package
+*.egg-info/
+.ruff_cache/
+
+# Cursor (local IDE plans)
+.cursor/
+
+# Runtime data (local paths)
+backend/data/*
+!backend/data/.gitkeep
 
 # Logs
 *.log

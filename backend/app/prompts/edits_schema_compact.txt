@@ -1,0 +1,6 @@
+فرمت edits:
+- هر فایل: path, edits[], info, log
+- هر edit: start_number_line, end_number_line (end = slice end مثل legacy), code, new_code
+- code باید دقیقاً با محتوای فایل روی دیسک مطابقت داشته باشد
+- چند edit در یک فایل: bottom-up اعمال می‌شود
+- new_code فقط whitespace = حذف خطوط

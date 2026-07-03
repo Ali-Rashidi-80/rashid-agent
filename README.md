@@ -1,4 +1,7 @@
-# 🚀 همیار کد رشید | Rashid Code Assistant
+# 🚀 همیار کد رشید | Rashid Code Assistant v2
+
+> **Monorepo:** FastAPI + Next.js 15 + Postgres + Redis + ARQ — branch `feature/rashid-agent-v2`  
+> راه‌اندازی: [docs/quickstart-fa.md](docs/quickstart-fa.md)
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.8%2B-yellow.svg)](https://python.org)
@@ -37,41 +40,34 @@
 
 ## 📋 پیش‌نیازها | Prerequisites
 
-قبل از نصب و استفاده، اطمینان حاصل کنید که سیستم شما دارای موارد زیر است:
-
-- **پایتون 3.8 یا بالاتر** | Python 3.8+
-- **کلید API OpenAI** (برای اتصال به مدل‌های هوش مصنوعی) | OpenAI API Key
-- **کتابخانه‌های مورد نیاز** (نصب خودکار با `pip install -r requirements.txt`) | Required libraries
-- **مرورگر وب مدرن** (Chrome, Firefox, etc.) | Modern web browser
+- **Python 3.11+** | Python 3.11+
+- **Node.js 20+** و npm | Node.js 20+ and npm
+- **Docker Desktop** (Postgres + Redis) | Docker Desktop
+- **کلید API Metis/OpenAI** در `.env` | API key in `.env`
+- راهنمای کامل: [docs/quickstart-fa.md](docs/quickstart-fa.md)
 
 ---
 
 ## ⚙️ نصب و اجرا | Installation & Setup
 
-### گام ۱: کلون کردن مخزن | Step 1: Clone the Repository
-```bash
-git clone https://github.com/your-repo/maho-code.git
-cd maho-code
+```powershell
+git clone <repo-url> rashid-agent
+cd rashid-agent
+copy .env.example .env   # سپس METIS_API_KEY را پر کنید
+
+pip install -e ".[dev]"
+.\scripts\infra-up.ps1
+.\scripts\migrate.ps1
+.\scripts\dev.ps1          # API :8000
+
+# ترمینال دوم — UI
+cd frontend && npm install && npm run dev   # :3000
+
+# اختیاری — worker
+.\scripts\dev-worker.ps1
 ```
 
-### گام ۲: نصب وابستگی‌ها | Step 2: Install Dependencies
-```bash
-pip install -r requirements.txt
-```
-
-### گام ۳: تنظیم متغیرهای محیطی | Step 3: Set Environment Variables
-فایل `.env` را در ریشه پروژه ایجاد کرده و کلید API خود را اضافه کنید:
-```env
-OPENAI_API_KEY=your_openai_api_key_here
-```
-
-### گام ۴: اجرای برنامه | Step 4: Run the Application
-```bash
-python main.py
-```
-
-### گام ۵: دسترسی به رابط وب | Step 5: Access the Web Interface
-به آدرس `http://127.0.0.1:8000` در مرورگر خود بروید و از ابزار استفاده کنید.
+Legacy UI قدیمی (`legacy/main.py`) منسوخ است؛ `python main.py` در ریشه فقط پیام راهنما می‌دهد. از stack بالا استفاده کنید.
 
 ---
 
@@ -108,7 +104,7 @@ python main.py
 
 - **متغیرهای محیطی اضافی**: علاوه بر `OPENAI_API_KEY`، می‌توانید تنظیمات دیگری مانند `DEBUG=True` اضافه کنید.
 - **فایل config.txt**: مسیر پروژه پیش‌فرض در این فایل ذخیره می‌شود.
-- **پورت سرور**: می‌توانید پورت را در کد `main.py` تغییر دهید (پیش‌فرض: 8000).
+- **پورت API:** در `scripts/dev.ps1` و `docker-compose.yml` (پیش‌فرض: 8000). UI در `:3000`.
 - **تنظیمات بکاپ**: تعداد نسخه‌های بکاپ را در `set_json.py` تنظیم کنید.
 
 ---

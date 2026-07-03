@@ -1,0 +1,8 @@
+version: "1.0.0"
+default_mode: agent
+max_system_tokens: 3500
+layers:
+  - persona_fa.txt
+  - modes/agent.txt
+  - edits_schema_compact.txt
+  - negative_constraints.txt

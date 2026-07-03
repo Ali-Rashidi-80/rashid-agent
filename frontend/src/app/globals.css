@@ -1,0 +1,88 @@
+@import "../styles/themes/index.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply min-h-screen bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  [dir="rtl"] body {
+    line-height: 1.75;
+    letter-spacing: 0;
+  }
+
+  [dir="ltr"] body {
+    line-height: 1.6;
+    letter-spacing: -0.01em;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply rounded-xl border border-white/10 backdrop-blur-xl;
+    background-color: color-mix(in oklch, var(--card) 82%, transparent);
+  }
+
+  .markdown-output {
+    @apply space-y-3 text-sm leading-relaxed;
+  }
+
+  .markdown-output h1,
+  .markdown-output h2,
+  .markdown-output h3 {
+    @apply font-semibold text-foreground;
+  }
+
+  .markdown-output h1 {
+    @apply text-xl;
+  }
+
+  .markdown-output h2 {
+    @apply text-lg;
+  }
+
+  .markdown-output p {
+    @apply text-foreground;
+    opacity: 0.9;
+  }
+
+  .markdown-output ul {
+    @apply list-disc ps-5;
+  }
+
+  .markdown-output ol {
+    @apply list-decimal ps-5;
+  }
+
+  .markdown-output pre {
+    @apply overflow-x-auto rounded-lg border border-border p-3 font-mono text-xs;
+    background-color: color-mix(in oklch, var(--muted) 50%, transparent);
+    direction: ltr;
+    text-align: left;
+  }
+
+  .markdown-output code {
+    @apply rounded bg-muted px-1 py-0.5 font-mono text-sm;
+  }
+
+  .markdown-output a {
+    @apply text-primary underline-offset-2 hover:underline;
+  }
+
+  .code-ltr {
+    direction: ltr;
+    text-align: left;
+  }
+}

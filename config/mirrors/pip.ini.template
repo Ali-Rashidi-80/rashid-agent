@@ -1,0 +1,4 @@
+[global]
+index-url = https://mirror2.chabokan.net/pypi/simple/
+trusted-host = mirror2.chabokan.net
+timeout = 120

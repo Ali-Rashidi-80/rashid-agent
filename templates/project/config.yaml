@@ -1,0 +1,9 @@
+default_mode: agent
+max_context_tokens: 32000
+model: grok-code-fast-1
+privacy:
+  show_metis_banner: true
+  exclude_patterns:
+    - ".env"
+    - "*.pem"
+    - "secrets/"

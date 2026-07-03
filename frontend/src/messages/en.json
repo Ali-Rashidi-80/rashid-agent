@@ -1,0 +1,89 @@
+{
+  "common": {
+    "appName": "Rashid Agent",
+    "loading": "Loading…",
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "settings": "Settings",
+    "back": "Back"
+  },
+  "nav": {
+    "home": "Home",
+    "project": "Project",
+    "history": "History",
+    "versions": "Versions",
+    "settings": "Settings",
+    "noSessions": "No saved chats yet"
+  },
+  "topBar": {
+    "modeAsk": "Ask",
+    "modePlan": "Plan",
+    "modeAgent": "Agent",
+    "model": "Model",
+    "language": "Language",
+    "theme": "Theme"
+  },
+  "chat": {
+    "placeholder": "Describe what you want to build or change…",
+    "send": "Send",
+    "stop": "Stop",
+    "streaming": "Generating…",
+    "generatingEdits": "Generating code edits…",
+    "emptyOutput": "Output will appear here as the agent responds.",
+    "outputTitle": "Output",
+    "runPip": "Run pip"
+  },
+  "statusBar": {
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "phase": "Phase",
+    "idle": "Idle",
+    "phaseMessage": "Message",
+    "phaseEdits": "Edits",
+    "phaseDone": "Done",
+    "phaseError": "Error",
+    "tokens": "Tokens",
+    "path": "Path"
+  },
+  "settings": {
+    "title": "Settings",
+    "appearance": "Appearance",
+    "appearanceDesc": "Choose a color preset and light/dark mode.",
+    "language": "Language",
+    "languageDesc": "Switch interface language. Persian uses RTL layout.",
+    "themePreset": "Theme preset",
+    "themeMode": "Display mode",
+    "modeLight": "Light",
+    "modeDark": "Dark",
+    "modeSystem": "System",
+    "project": "Project",
+    "projectDesc": "Folder path the agent reads and edits on your machine.",
+    "projectPath": "Project path",
+    "projectPathPlaceholder": "D:\\projects\\my-app",
+    "saveProjectPath": "Save path",
+    "projectPathSaved": "Project path saved",
+    "saving": "Saving…"
+  },
+  "themes": {
+    "royal-violet": "Royal Violet",
+    "midnight-gold": "Midnight Gold",
+    "ocean-sapphire": "Ocean Sapphire",
+    "rose-quartz": "Rose Quartz",
+    "emerald-forest": "Emerald Forest",
+    "graphite-pro": "Graphite Pro",
+    "desert-sand": "Desert Sand",
+    "aurora-mesh": "Aurora Mesh"
+  },
+  "diff": {
+    "title": "Diff preview",
+    "loading": "Loading editor…",
+    "noDiff": "No diff to display.",
+    "preview": "Preview",
+    "apply": "Apply",
+    "previewDone": "Preview updated",
+    "previewFailed": "Preview failed",
+    "applyDone": "Edits applied",
+    "applyFailed": "Apply failed"
+  }
+}

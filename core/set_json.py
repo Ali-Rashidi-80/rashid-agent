@@ -121,22 +121,12 @@ def apply_edits(file_path, edits):
 
         new_code = edit.get("new_code", "")
 
-        
-
-        if new_code:
-
-            # حفظ newlineها با splitlines و اضافه کردن \n به هر خط به جز آخرین
-
+        if new_code and new_code.strip():
             new_lines = new_code.splitlines(keepends=True)
-
-            if not new_lines[-1].endswith('\n'):
-
+            if new_lines and not new_lines[-1].endswith('\n'):
                 new_lines[-1] += '\n'
-
             lines[start:end] = new_lines
-
         else:
-
             lines[start:end] = []
 
     

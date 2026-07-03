@@ -1,0 +1,89 @@
+{
+  "common": {
+    "appName": "رشید ایجنت",
+    "loading": "در حال بارگذاری…",
+    "save": "ذخیره",
+    "cancel": "انصراف",
+    "close": "بستن",
+    "settings": "تنظیمات",
+    "back": "بازگشت"
+  },
+  "nav": {
+    "home": "خانه",
+    "project": "پروژه",
+    "history": "تاریخچه",
+    "versions": "نسخه‌ها",
+    "settings": "تنظیمات",
+    "noSessions": "هنوز گفتگویی ذخیره نشده"
+  },
+  "topBar": {
+    "modeAsk": "پرسش",
+    "modePlan": "برنامه",
+    "modeAgent": "ایجنت",
+    "model": "مدل",
+    "language": "زبان",
+    "theme": "تم"
+  },
+  "chat": {
+    "placeholder": "توضیح دهید چه چیزی می‌خواهید بسازید یا تغییر دهید…",
+    "send": "ارسال",
+    "stop": "توقف",
+    "streaming": "در حال تولید…",
+    "generatingEdits": "در حال تولید ویرایش‌های کد…",
+    "emptyOutput": "خروجی ایجنت اینجا نمایش داده می‌شود.",
+    "outputTitle": "خروجی",
+    "runPip": "اجرای pip"
+  },
+  "statusBar": {
+    "connected": "متصل",
+    "disconnected": "قطع",
+    "phase": "فاز",
+    "idle": "آماده",
+    "phaseMessage": "پیام",
+    "phaseEdits": "ویرایش",
+    "phaseDone": "تمام",
+    "phaseError": "خطا",
+    "tokens": "توکن",
+    "path": "مسیر"
+  },
+  "settings": {
+    "title": "تنظیمات",
+    "appearance": "ظاهر",
+    "appearanceDesc": "پیش‌تنظیم رنگ و حالت روشن/تیره را انتخاب کنید.",
+    "language": "زبان",
+    "languageDesc": "زبان رابط کاربری. فارسی از چیدمان راست‌به‌چپ استفاده می‌کند.",
+    "themePreset": "پیش‌تنظیم تم",
+    "themeMode": "حالت نمایش",
+    "modeLight": "روشن",
+    "modeDark": "تیره",
+    "modeSystem": "سیستم",
+    "project": "پروژه",
+    "projectDesc": "مسیر پوشهٔ پروژه‌ای که ایجنت روی آن کار می‌کند.",
+    "projectPath": "مسیر پروژه",
+    "projectPathPlaceholder": "D:\\projects\\my-app",
+    "saveProjectPath": "ذخیره مسیر",
+    "projectPathSaved": "مسیر پروژه ذخیره شد",
+    "saving": "در حال ذخیره…"
+  },
+  "themes": {
+    "royal-violet": "بنفش سلطنتی",
+    "midnight-gold": "طلایی نیمه‌شب",
+    "ocean-sapphire": "یاقوت اقیانوس",
+    "rose-quartz": "رز کوارتز",
+    "emerald-forest": "جنگل زمرد",
+    "graphite-pro": "گرافیت حرفه‌ای",
+    "desert-sand": "شن کویر",
+    "aurora-mesh": "شفق قطبی"
+  },
+  "diff": {
+    "title": "پیش‌نمایش تفاوت",
+    "loading": "در حال بارگذاری ویرایشگر…",
+    "noDiff": "تفاوتی برای نمایش وجود ندارد.",
+    "preview": "پیش‌نمایش",
+    "apply": "اعمال",
+    "previewDone": "پیش‌نمایش به‌روز شد",
+    "previewFailed": "پیش‌نمایش ناموفق بود",
+    "applyDone": "ویرایش‌ها اعمال شدند",
+    "applyFailed": "اعمال ویرایش‌ها ناموفق بود"
+  }
+}
