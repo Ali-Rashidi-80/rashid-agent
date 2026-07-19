@@ -1,11 +1,16 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Repo root .env must load regardless of CWD (uvicorn is often started from
+# backend/). Later entries win, so a CWD-local .env still takes precedence.
+_REPO_ROOT_ENV = Path(__file__).resolve().parents[3] / ".env"
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(str(_REPO_ROOT_ENV), ".env"),
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -23,6 +28,9 @@ class Settings(BaseSettings):
     rashid_debug: bool = False
     rashid_token: str = ""
     allow_blind_apply: bool = False
+    # Override for the data dir holding project_path.txt (also disables the
+    # legacy config.txt fallback). Used for test isolation.
+    rashid_data_dir: str = ""
 
     @property
     def api_key(self) -> str:

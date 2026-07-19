@@ -3,7 +3,30 @@
 
 import pytest
 from app.config.settings import Settings
-from app.services.metis import MetisService, fix_and_parse_json
+from app.services.metis import MetisService, fix_and_parse_json, parse_stream_delta
+
+
+def test_parse_stream_delta_metis_no_space_after_colon():
+    # Exact line shape observed from the live Metis wrapper API
+    line = (
+        'data:{"id":"","created":1,"model":"grok-code-fast-1",'
+        '"choices":[{"index":0,"delta":{"role":"assistant","content":"سلام"},'
+        '"finish_reason":null}]}'
+    )
+    assert parse_stream_delta(line) == "سلام"
+
+
+def test_parse_stream_delta_openai_space_after_colon():
+    line = 'data: {"choices":[{"delta":{"content":"hi"}}]}'
+    assert parse_stream_delta(line) == "hi"
+
+
+def test_parse_stream_delta_ignores_done_empty_and_garbage():
+    assert parse_stream_delta("data: [DONE]") is None
+    assert parse_stream_delta("data:") is None
+    assert parse_stream_delta(": keep-alive") is None
+    assert parse_stream_delta('data:{"choices":[{"delta":{"content":""}}]}') is None
+    assert parse_stream_delta("data:not-json") is None
 
 
 def test_fix_and_parse_json_trailing_comma():

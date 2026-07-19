@@ -2,7 +2,6 @@ import json
 import re
 from collections.abc import AsyncIterator
 from typing import Any
-from urllib.parse import urlparse
 
 import httpx
 import structlog
@@ -20,18 +19,37 @@ def resolve_metis_chat_url(settings: Settings) -> str:
         return settings.metis_openai_url.rstrip("/")
 
     base = settings.metis_base_url.rstrip("/")
-    if base.endswith("/openai/v1/chat/completions"):
+    if not base:
+        return METIS_DEFAULT_OPENAI_URL
+
+    if base.endswith("/chat/completions"):
         return base
 
-    # Wrapper URLs like .../api/v1/wrapper/grok must not become .../api/v1/openai/...
-    if "/wrapper/" in base or base.endswith("/wrapper/grok"):
-        parsed = urlparse(base)
-        return f"{parsed.scheme}://{parsed.netloc}/openai/v1/chat/completions"
+    # Wrapper bases like .../api/v1/wrapper/grok expose an OpenAI-compatible
+    # endpoint at <base>/chat/completions (verified against the live Metis API;
+    # the /openai/v1 gateway rejects wrapper keys/models with 404 model_not_found).
+    return f"{base}/chat/completions"
 
-    if "/openai/" in base:
-        return base
 
-    return METIS_DEFAULT_OPENAI_URL
+def parse_stream_delta(line: str) -> str | None:
+    """Extract the content delta from one SSE line.
+
+    Metis emits "data:{...}" without a space after the colon; the OpenAI
+    reference format uses "data: {...}". Accept both. Returns None for
+    non-data lines, [DONE], keep-alives, and chunks without content.
+    """
+    if not line.startswith("data:"):
+        return None
+    data = line[5:].strip()
+    if not data or data == "[DONE]":
+        return None
+    try:
+        chunk = json.loads(data)
+        delta = chunk["choices"][0].get("delta", {})
+        content = delta.get("content")
+        return content if content else None
+    except (json.JSONDecodeError, KeyError, IndexError, TypeError):
+        return None
 
 
 def fix_and_parse_json(text: str) -> dict[str, Any]:
@@ -93,19 +111,11 @@ class MetisService:
             ) as response:
                 response.raise_for_status()
                 async for line in response.aiter_lines():
-                    if not line.startswith("data: "):
-                        continue
-                    data = line[6:].strip()
-                    if data == "[DONE]":
+                    if line.startswith("data:") and line[5:].strip() == "[DONE]":
                         break
-                    try:
-                        chunk = json.loads(data)
-                        delta = chunk["choices"][0].get("delta", {})
-                        content = delta.get("content")
-                        if content:
-                            yield content
-                    except (json.JSONDecodeError, KeyError, IndexError):
-                        continue
+                    content = parse_stream_delta(line)
+                    if content:
+                        yield content
 
     async def fetch_edits_phase(self, system: str, user: str, message: str) -> AgentResponse:
         if not self.settings.api_key:
