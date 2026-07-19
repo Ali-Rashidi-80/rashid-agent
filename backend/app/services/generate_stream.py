@@ -90,6 +90,7 @@ async def generate_stream(
     request_id: str | None = None,
     session_id: str | None = None,
     project_path: str | None = None,
+    model: str | None = None,
     db: AsyncSession | None = None,
     *,
     is_disconnected=None,
@@ -111,7 +112,7 @@ async def generate_stream(
     composer = ContextComposer(path, mode=mode)
     system = composer.build_system_prompt()
     user = composer.build_user_message(prompt)
-    metis = MetisService(settings)
+    metis = MetisService(settings, model=model)
     reconnect_degraded = False
 
     async def track_publish(event_type: str, data: dict) -> str | None:

@@ -68,10 +68,29 @@ def fix_and_parse_json(text: str) -> dict[str, Any]:
         return {"error": f"json parse failed: {exc}"}
 
 
+def resolve_metis_models_url(settings: Settings) -> str:
+    chat = resolve_metis_chat_url(settings)
+    if chat.endswith("/chat/completions"):
+        return f"{chat[: -len('/chat/completions')]}/models"
+    return f"{chat.rstrip('/')}/models"
+
+
+FALLBACK_METIS_MODELS = (
+    "grok-code-fast-1",
+    "grok-4-1-fast",
+    "grok-4-fast",
+    "grok-4-0709",
+    "grok-2-latest",
+    "grok-2-1212",
+    "grok-3-mini-beta",
+    "grok-3-beta",
+)
+
+
 class MetisService:
-    def __init__(self, settings: Settings) -> None:
+    def __init__(self, settings: Settings, model: str | None = None) -> None:
         self.settings = settings
-        self.model = getattr(settings, "rashid_model", None) or "grok-code-fast-1"
+        self.model = (model or "").strip() or getattr(settings, "rashid_model", None) or "grok-code-fast-1"
 
     def _headers(self) -> dict[str, str]:
         key = self.settings.api_key
@@ -81,6 +100,28 @@ class MetisService:
 
     def _chat_url(self) -> str:
         return resolve_metis_chat_url(self.settings)
+
+    async def list_models(self) -> list[str]:
+        if not self.settings.api_key:
+            return list(FALLBACK_METIS_MODELS)
+        url = resolve_metis_models_url(self.settings)
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.get(url, headers=self._headers())
+                resp.raise_for_status()
+                data = resp.json()
+            items = data.get("data") if isinstance(data, dict) else None
+            if not isinstance(items, list):
+                return list(FALLBACK_METIS_MODELS)
+            ids = [
+                str(item["id"])
+                for item in items
+                if isinstance(item, dict) and isinstance(item.get("id"), str)
+            ]
+            return ids or list(FALLBACK_METIS_MODELS)
+        except Exception as exc:
+            logger.warning("metis_list_models_failed", error=str(exc))
+            return list(FALLBACK_METIS_MODELS)
 
     async def stream_message_phase(
         self,

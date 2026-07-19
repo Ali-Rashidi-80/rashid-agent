@@ -14,15 +14,24 @@
     "history": "History",
     "versions": "Versions",
     "settings": "Settings",
-    "noSessions": "No saved chats yet"
+    "noSessions": "No saved chats yet",
+    "newChat": "New chat",
+    "sessionOpened": "Chat opened",
+    "sessionOpenFailed": "Failed to open chat"
   },
   "topBar": {
     "modeAsk": "Ask",
     "modePlan": "Plan",
     "modeAgent": "Agent",
+    "modeAskHint": "Answers only — no file edits (like Cursor Ask)",
+    "modePlanHint": "Markdown implementation plan — no edits until you approve",
+    "modeAgentHint": "Code edits with diff preview and apply",
+    "cycleModesHint": "Shift+Tab to cycle modes",
     "model": "Model",
+    "modelHint": "Choose a Metis / Grok model",
     "language": "Language",
-    "theme": "Theme"
+    "theme": "Theme",
+    "toggleSidebar": "Toggle sidebar"
   },
   "chat": {
     "placeholder": "Describe what you want to build or change…",
@@ -32,7 +41,22 @@
     "generatingEdits": "Generating code edits…",
     "emptyOutput": "Output will appear here as the agent responds.",
     "outputTitle": "Output",
-    "runPip": "Run pip"
+    "runPip": "Run pip",
+    "roleUser": "You",
+    "roleAssistant": "Rashid",
+    "askModeHint": "Ask mode: analytical answers with no file changes. Switch to Agent to edit code.",
+    "planModeHint": "Plan mode: step-by-step plan without applying edits. After review, switch to Agent.",
+    "diffDisabledHint": "Diff preview and apply are available only in Agent mode."
+  },
+  "layout": {
+    "output": "Output",
+    "diff": "Diff",
+    "split": "Split",
+    "focusOutput": "Maximize output panel",
+    "focusDiff": "Maximize diff panel",
+    "splitView": "Split view",
+    "resize": "Drag to resize",
+    "dragHint": "Drag panel edge · Ctrl+Alt+1/2/0"
   },
   "statusBar": {
     "connected": "Connected",

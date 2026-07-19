@@ -14,15 +14,24 @@
     "history": "تاریخچه",
     "versions": "نسخه‌ها",
     "settings": "تنظیمات",
-    "noSessions": "هنوز گفتگویی ذخیره نشده"
+    "noSessions": "هنوز گفتگویی ذخیره نشده",
+    "newChat": "چت جدید",
+    "sessionOpened": "گفتگو باز شد",
+    "sessionOpenFailed": "باز کردن گفتگو ناموفق بود"
   },
   "topBar": {
     "modeAsk": "پرسش",
     "modePlan": "برنامه",
     "modeAgent": "ایجنت",
+    "modeAskHint": "فقط پاسخ و توضیح — بدون ویرایش فایل (مثل Ask در Cursor)",
+    "modePlanHint": "برنامهٔ پیاده‌سازی markdown — بدون اعمال ادیت تا تأیید شما",
+    "modeAgentHint": "ویرایش کد، پیش‌نمایش diff و اعمال روی پروژه",
+    "cycleModesHint": "Shift+Tab برای جابه‌جایی بین حالت‌ها",
     "model": "مدل",
+    "modelHint": "انتخاب مدل Metis / Grok",
     "language": "زبان",
-    "theme": "تم"
+    "theme": "تم",
+    "toggleSidebar": "نمایش/مخفی کردن نوار کناری"
   },
   "chat": {
     "placeholder": "توضیح دهید چه چیزی می‌خواهید بسازید یا تغییر دهید…",
@@ -32,7 +41,22 @@
     "generatingEdits": "در حال تولید ویرایش‌های کد…",
     "emptyOutput": "خروجی ایجنت اینجا نمایش داده می‌شود.",
     "outputTitle": "خروجی",
-    "runPip": "اجرای pip"
+    "runPip": "اجرای pip",
+    "roleUser": "شما",
+    "roleAssistant": "رشید",
+    "askModeHint": "حالت پرسش: پاسخ تحلیلی بدون تغییر فایل. برای ویرایش کد به «ایجنت» بروید.",
+    "planModeHint": "حالت برنامه: طرح گام‌به‌گام بدون اعمال ادیت. پس از تأیید طرح، حالت ایجنت را انتخاب کنید.",
+    "diffDisabledHint": "پیش‌نمایش و اعمال ادیت فقط در حالت ایجنت فعال است."
+  },
+  "layout": {
+    "output": "خروجی",
+    "diff": "تفاوت",
+    "split": "تقسیم",
+    "focusOutput": "بزرگ کردن پنل خروجی",
+    "focusDiff": "بزرگ کردن پنل تفاوت",
+    "splitView": "نمایش دو ستونه",
+    "resize": "کشیدن برای تغییر اندازه",
+    "dragHint": "مرز پنل را بکشید · Ctrl+Alt+1/2/0"
   },
   "statusBar": {
     "connected": "متصل",

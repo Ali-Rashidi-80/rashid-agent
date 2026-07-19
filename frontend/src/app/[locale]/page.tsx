@@ -1,13 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { PromptComposer } from "@/features/chat/PromptComposer";
 import { OutputPanel } from "@/features/chat/OutputPanel";
+import { PanelWorkspace } from "@/features/chat/PanelWorkspace";
 import { useSSE } from "@/features/chat/use-sse";
 import { DiffActions } from "@/features/diff/DiffActions";
 import { MonacoDiffPanel } from "@/features/diff/MonacoDiffPanel";
 import { usePipRunner } from "@/features/agent/use-pip";
 import { useEdits } from "@/features/diff/use-edits";
+import { useAgentStore } from "@/lib/agent-store";
 
 function guessLanguage(path: string): string {
   if (path.endsWith(".py")) return "python";
@@ -19,8 +22,9 @@ function guessLanguage(path: string): string {
 }
 
 export default function HomePage() {
+  const t = useTranslations("chat");
   const [prompt, setPrompt] = useState("");
-  const { content, isStreaming, error, phase, result, start, stop } = useSSE();
+  const { content, isStreaming, error, phase, result, start, stop, reset } = useSSE();
   const { preview, apply, isLoading, error: editsError } = useEdits();
   const { pipLog, runPip, isRunning: pipRunning } = usePipRunner();
   const [original, setOriginal] = useState("");
@@ -30,12 +34,29 @@ export default function HomePage() {
   const previewConfirmedRef = useRef(false);
   const previewEpochRef = useRef(0);
 
+  const mode = useAgentStore((s) => s.mode);
+  const chatEpoch = useAgentStore((s) => s.chatEpoch);
+  const restoredResult = useAgentStore((s) => s.restoredResult);
+  const setRestoredResult = useAgentStore((s) => s.setRestoredResult);
+
+  const activeResult = result ?? restoredResult;
+  const editsEnabled = mode === "agent";
+
+  useEffect(() => {
+    reset();
+    setPrompt("");
+    setOriginal("");
+    setModified("");
+    previewConfirmedRef.current = false;
+    setPreviewReady(false);
+  }, [chatEpoch, reset]);
+
   const loadDiffFromPreview = useCallback(async (): Promise<boolean> => {
     const epoch = previewEpochRef.current;
-    if (!result?.edits?.length) {
+    if (!activeResult?.edits?.length) {
       return false;
     }
-    const response = await preview(result.edits);
+    const response = await preview(activeResult.edits);
     if (epoch !== previewEpochRef.current) {
       return false;
     }
@@ -56,32 +77,39 @@ export default function HomePage() {
     previewConfirmedRef.current = true;
     setPreviewReady(true);
     return true;
-  }, [preview, result]);
+  }, [preview, activeResult]);
 
   useEffect(() => {
     previewEpochRef.current += 1;
     previewConfirmedRef.current = false;
     setPreviewReady(false);
-    if (result?.edits?.length && !isStreaming) {
+    if (activeResult?.edits?.length && !isStreaming && editsEnabled) {
       void loadDiffFromPreview();
-    } else if (!result?.edits?.length) {
+    } else if (!activeResult?.edits?.length) {
       setOriginal("");
       setModified("");
     }
-  }, [result, isStreaming, loadDiffFromPreview]);
+  }, [activeResult, isStreaming, loadDiffFromPreview, editsEnabled]);
+
+  useEffect(() => {
+    if (result) {
+      setRestoredResult(null);
+    }
+  }, [result, setRestoredResult]);
 
   const handleSubmit = () => {
     if (!prompt.trim() || isStreaming) {
       return;
     }
     start({ prompt });
+    setPrompt("");
   };
 
   const handleApply = async (): Promise<boolean> => {
-    if (!result?.edits?.length) {
+    if (!activeResult?.edits?.length || !editsEnabled) {
       return false;
     }
-    const response = await apply(result.edits, previewConfirmedRef.current);
+    const response = await apply(activeResult.edits, previewConfirmedRef.current);
     if (!response?.ok) {
       return false;
     }
@@ -89,7 +117,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 p-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-3 p-4">
       <PromptComposer
         value={prompt}
         onChange={setPrompt}
@@ -98,36 +126,52 @@ export default function HomePage() {
         isStreaming={isStreaming}
       />
 
-      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-2">
-        <OutputPanel
-          content={content}
-          isStreaming={isStreaming}
-          error={error}
-          phase={phase}
-          agentLog={result?.log || pipLog || undefined}
-          pipCommand={result?.pip?.trim() || undefined}
-          onRunPip={runPip}
-          pipRunning={pipRunning}
-        />
-        <div className="flex min-h-0 flex-col">
-          <MonacoDiffPanel
-            original={original}
-            modified={modified}
-            language={diffLanguage}
-            height="320px"
+      {mode !== "agent" && (
+        <p className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          {mode === "ask" ? t("askModeHint") : t("planModeHint")}
+        </p>
+      )}
+
+      <PanelWorkspace
+        output={
+          <OutputPanel
+            content={content}
+            isStreaming={isStreaming}
+            error={error}
+            phase={phase}
+            agentLog={activeResult?.log || pipLog || undefined}
+            pipCommand={activeResult?.pip?.trim() || undefined}
+            onRunPip={runPip}
+            pipRunning={pipRunning}
           />
-          {editsError && (
-            <p className="border-t border-border px-4 py-2 text-xs text-red-400">{editsError}</p>
-          )}
-          <DiffActions
-            hasEdits={Boolean(result?.edits?.length)}
-            isLoading={isLoading}
-            canApply={previewReady}
-            onPreview={loadDiffFromPreview}
-            onApply={handleApply}
-          />
-        </div>
-      </div>
+        }
+        diff={
+          <div className="flex min-h-0 flex-1 flex-col">
+            <MonacoDiffPanel
+              original={original}
+              modified={modified}
+              language={diffLanguage}
+              height="100%"
+            />
+            {editsError && (
+              <p className="border-t border-border px-4 py-2 text-xs text-red-400">{editsError}</p>
+            )}
+            {editsEnabled ? (
+              <DiffActions
+                hasEdits={Boolean(activeResult?.edits?.length)}
+                isLoading={isLoading}
+                canApply={previewReady}
+                onPreview={loadDiffFromPreview}
+                onApply={handleApply}
+              />
+            ) : (
+              <p className="border-t border-border px-4 py-2 text-xs text-muted-foreground">
+                {t("diffDisabledHint")}
+              </p>
+            )}
+          </div>
+        }
+      />
     </div>
   );
 }

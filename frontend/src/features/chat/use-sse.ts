@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { useAgentStore, type AgentResult } from "@/lib/agent-store";
-import { ensureChatSession, fetchProjectPath } from "@/lib/session-api";
+import { ensureChatSession, fetchProjectPath, titleFromPrompt } from "@/lib/session-api";
 import { parseSSEBlock } from "./sse-parser";
 import { initialSSEState, reduceSSEState, type SSEStreamState } from "./sse-state";
 
@@ -91,9 +91,11 @@ async function consumeSSEBody(
 
 export function useSSE(endpoint = "/api/v1/generate/stream"): UseSSEResult {
   const mode = useAgentStore((s) => s.mode);
+  const model = useAgentStore((s) => s.model);
   const sessionId = useAgentStore((s) => s.sessionId);
   const setSessionId = useAgentStore((s) => s.setSessionId);
   const setPhase = useAgentStore((s) => s.setPhase);
+  const appendTurn = useAgentStore((s) => s.appendTurn);
 
   const [state, setState] = useState<SSEStreamState>(initialSSEState);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -142,7 +144,18 @@ export function useSSE(endpoint = "/api/v1/generate/stream"): UseSSEResult {
         if (!projectPath) {
           throw new Error("Project path is not configured");
         }
-        const activeSessionId = await ensureChatSession(projectPath, mode, sessionId);
+        const promptText = String(payload.prompt ?? "");
+        appendTurn({
+          id: `local-user-${Date.now()}`,
+          role: "user",
+          content: promptText,
+        });
+        const activeSessionId = await ensureChatSession(
+          projectPath,
+          mode,
+          sessionId,
+          titleFromPrompt(promptText, mode),
+        );
         if (activeSessionId !== sessionId) {
           setSessionId(activeSessionId);
         }
@@ -156,6 +169,7 @@ export function useSSE(endpoint = "/api/v1/generate/stream"): UseSSEResult {
           body: JSON.stringify({
             ...payload,
             mode,
+            model,
             session_id: activeSessionId,
           }),
           signal: controller.signal,
@@ -178,6 +192,13 @@ export function useSSE(endpoint = "/api/v1/generate/stream"): UseSSEResult {
         lastEventIdRef.current = consumed.lastEventId;
         if (isStreamIncomplete(consumed.state)) {
           throw new Error("Stream ended before completion");
+        }
+        if (consumed.state.content.trim()) {
+          appendTurn({
+            id: `local-assistant-${Date.now()}`,
+            role: "assistant",
+            content: consumed.state.content,
+          });
         }
       } catch (err) {
         if ((err as Error).name === "AbortError") {
@@ -231,7 +252,7 @@ export function useSSE(endpoint = "/api/v1/generate/stream"): UseSSEResult {
         abortRef.current = null;
       }
     },
-    [endpoint, mode, sessionId, setPhase, setSessionId, stop],
+    [appendTurn, endpoint, mode, model, sessionId, setPhase, setSessionId, stop],
   );
 
   return {

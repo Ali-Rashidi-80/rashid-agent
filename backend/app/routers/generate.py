@@ -45,6 +45,7 @@ async def post_generate_stream(
             request_id=stream_request_id,
             session_id=body.session_id,
             project_path=body.project_path,
+            model=body.model,
             db=db,
             is_disconnected=is_disconnected,
         ):
@@ -96,6 +97,7 @@ async def post_generate_sync(
         mode=body.mode,
         session_id=body.session_id,
         project_path=body.project_path,
+        model=body.model,
         db=db,
     ):
         stream_text.append(chunk)

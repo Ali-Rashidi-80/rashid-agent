@@ -31,6 +31,7 @@ class GenerateRequest(BaseModel):
     mode: Literal["ask", "plan", "agent"] = "agent"
     session_id: str | None = None
     project_path: str | None = None
+    model: str | None = None
 
 
 class StreamEvent(BaseModel):

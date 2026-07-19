@@ -41,20 +41,20 @@ export function MonacoDiffPanel({
 
   if (!original && !modified) {
     return (
-      <section className="glass-panel flex min-h-[240px] items-center justify-center p-4 text-sm text-muted-foreground">
+      <section className="glass-panel flex min-h-[240px] flex-1 items-center justify-center p-4 text-sm text-muted-foreground">
         {t("noDiff")}
       </section>
     );
   }
 
   return (
-    <section className="glass-panel flex min-h-0 flex-col overflow-hidden">
+    <section className="glass-panel flex min-h-0 flex-1 flex-col overflow-hidden">
       <header className="border-b border-border px-4 py-3 text-sm font-medium">
         {t("title")}
       </header>
       <div className="code-ltr min-h-0 flex-1">
         <DiffEditor
-          height={height}
+          height={height === "100%" ? "100%" : height}
           language={language}
           original={original}
           modified={modified}

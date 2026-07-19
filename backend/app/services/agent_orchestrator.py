@@ -32,6 +32,7 @@ class AgentOrchestrator:
         session_id: str | None = None,
         project_path: str | None = None,
         request_id: str | None = None,
+        model: str | None = None,
     ) -> dict | None:
         stream_text: list[str] = []
         async for chunk in generate_stream(
@@ -42,6 +43,7 @@ class AgentOrchestrator:
             session_id=session_id,
             project_path=project_path,
             request_id=request_id,
+            model=model,
             db=self._db,
         ):
             stream_text.append(chunk)
@@ -59,6 +61,7 @@ class AgentOrchestrator:
         project_path: str | None = None,
         session_id: str | None = None,
         request_id: str | None = None,
+        model: str | None = None,
     ) -> dict:
         steps_log: list[dict] = []
         current_prompt = prompt
@@ -74,6 +77,7 @@ class AgentOrchestrator:
                 session_id=session_id,
                 project_path=project_path,
                 request_id=request_id,
+                model=model,
             )
             steps_completed = step
             steps_log.append(

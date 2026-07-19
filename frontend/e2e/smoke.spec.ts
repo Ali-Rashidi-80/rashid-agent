@@ -23,4 +23,16 @@ test.describe("Rashid UI smoke", () => {
     const dir = await page.locator("html").getAttribute("dir");
     expect(dir).toBe("rtl");
   });
+
+  test("new chat button and colored modes are present", async ({ page }) => {
+    await page.goto("/fa");
+    const newChat = page.getByRole("button", { name: /چت جدید/i });
+    if (!(await newChat.isVisible().catch(() => false))) {
+      await page.getByRole("button", { name: /نوار کناری|Toggle sidebar|sidebar/i }).first().click();
+    }
+    await expect(page.getByRole("button", { name: /چت جدید/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^پرسش$/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^برنامه$/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^ایجنت$/i })).toBeVisible();
+  });
 });

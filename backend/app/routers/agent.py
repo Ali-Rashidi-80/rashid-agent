@@ -23,6 +23,7 @@ class AgentRunRequest(BaseModel):
     mode: str = "agent"
     project_path: str | None = None
     session_id: str | None = None
+    model: str | None = None
 
 
 class PlanRequest(BaseModel):
@@ -70,6 +71,7 @@ async def agent_run(
         project_path=body.project_path,
         session_id=body.session_id,
         request_id=request_id,
+        model=body.model,
     )
 
 

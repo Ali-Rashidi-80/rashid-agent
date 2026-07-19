@@ -9,7 +9,7 @@ from app.logging_config import configure_logging
 from app.middleware.auth import TokenAuthMiddleware
 from app.middleware.exception_handler import register_exception_handlers
 from app.middleware.request_id import RequestIdMiddleware
-from app.routers import acp, agent, edits, generate, health, pip, project, sessions, tools
+from app.routers import acp, agent, edits, generate, health, models, pip, project, sessions, tools
 from app.services.redis_client import close_redis, init_redis
 
 
@@ -50,6 +50,7 @@ def create_app() -> FastAPI:
         agent.router,
         pip.router,
         acp.router,
+        models.router,
     ):
         app.include_router(router)
         app.include_router(router, prefix="/api/v1")

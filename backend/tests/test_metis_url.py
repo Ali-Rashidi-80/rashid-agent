@@ -6,7 +6,11 @@ wrapper keys/models with 404 model_not_found, so it must never be the default.
 """
 
 from app.config.settings import Settings
-from app.services.metis import METIS_DEFAULT_OPENAI_URL, resolve_metis_chat_url
+from app.services.metis import (
+    METIS_DEFAULT_OPENAI_URL,
+    resolve_metis_chat_url,
+    resolve_metis_models_url,
+)
 
 
 def test_wrapper_grok_base_resolves_to_wrapper_chat_completions():
@@ -33,3 +37,11 @@ def test_full_chat_completions_base_unchanged():
 def test_empty_base_falls_back_to_default():
     settings = Settings(metis_base_url="", metis_openai_url="")
     assert resolve_metis_chat_url(settings) == METIS_DEFAULT_OPENAI_URL
+
+
+def test_models_url_derived_from_wrapper_chat_url():
+    settings = Settings(metis_base_url="https://api.metisai.ir/api/v1/wrapper/grok")
+    assert (
+        resolve_metis_models_url(settings)
+        == "https://api.metisai.ir/api/v1/wrapper/grok/models"
+    )

@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Home, Settings } from "lucide-react";
+import { Home, Plus, Settings } from "lucide-react";
 import { Link, usePathname } from "@/i18n/navigation";
 import { SessionHistory } from "@/components/shell/SessionHistory";
+import { useAgentStore } from "@/lib/agent-store";
 import { cn } from "@/lib/cn";
 
 interface SidebarProps {
@@ -20,6 +22,14 @@ const navItems = [
 export function Sidebar({ open, onClose, className }: SidebarProps) {
   const t = useTranslations("nav");
   const pathname = usePathname();
+  const startNewChat = useAgentStore((s) => s.startNewChat);
+  const [refreshToken, setRefreshToken] = useState(0);
+
+  const handleNewChat = () => {
+    startNewChat();
+    setRefreshToken((value) => value + 1);
+    onClose();
+  };
 
   return (
     <>
@@ -39,8 +49,20 @@ export function Sidebar({ open, onClose, className }: SidebarProps) {
           className,
         )}
       >
-        <div className="border-b border-border px-4 py-4">
+        <div className="flex items-center justify-between border-b border-border px-4 py-4">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Rashid</p>
+        </div>
+
+        <div className="border-b border-border p-3">
+          <button
+            type="button"
+            onClick={handleNewChat}
+            title={`${t("newChat")} (Ctrl+Shift+N)`}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90"
+          >
+            <Plus className="h-4 w-4" />
+            {t("newChat")}
+          </button>
         </div>
 
         <nav className="flex flex-col gap-1 border-b border-border p-3">
@@ -78,7 +100,10 @@ export function Sidebar({ open, onClose, className }: SidebarProps) {
           <p className="px-4 pb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             {t("history")}
           </p>
-          <SessionHistory />
+          <SessionHistory
+            refreshToken={refreshToken}
+            onSelectSession={onClose}
+          />
         </div>
       </aside>
     </>
