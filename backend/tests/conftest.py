@@ -25,6 +25,21 @@ __all__ = [
 ]
 
 
+@pytest.fixture(autouse=True)
+def isolate_project_path(tmp_path, monkeypatch):
+    """Point ProjectPathService at a per-test data dir.
+
+    Prevents tests from reading/writing the real backend/data/project_path.txt
+    or the legacy repo-root config.txt (which may reference an unrelated project).
+    """
+    from app.config.settings import get_settings
+
+    monkeypatch.setenv("RASHID_DATA_DIR", str(tmp_path / "rashid-data"))
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
 @pytest.fixture
 def disable_external_api(monkeypatch):
     from app.config.settings import get_settings

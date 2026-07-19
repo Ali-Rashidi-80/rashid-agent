@@ -6,7 +6,13 @@ from app.config.settings import Settings
 class ProjectPathService:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
-        self._data_dir = Path(__file__).resolve().parents[2] / "data"
+        override = getattr(settings, "rashid_data_dir", "") or ""
+        if override:
+            self._data_dir = Path(override)
+            self._legacy_fallback = False
+        else:
+            self._data_dir = Path(__file__).resolve().parents[2] / "data"
+            self._legacy_fallback = True
         self._path_file = self._data_dir / "project_path.txt"
 
     def get_path(self) -> Path | None:
@@ -16,13 +22,14 @@ class ProjectPathService:
                 p = Path(raw)
                 if p.is_dir():
                     return p.resolve()
-        legacy = Path(__file__).resolve().parents[3] / "config.txt"
-        if legacy.exists():
-            raw = legacy.read_text(encoding="utf-8").strip()
-            if raw:
-                p = Path(raw)
-                if p.is_dir():
-                    return p.resolve()
+        if self._legacy_fallback:
+            legacy = Path(__file__).resolve().parents[3] / "config.txt"
+            if legacy.exists():
+                raw = legacy.read_text(encoding="utf-8").strip()
+                if raw:
+                    p = Path(raw)
+                    if p.is_dir():
+                        return p.resolve()
         return None
 
     def set_path(self, path: str) -> Path:

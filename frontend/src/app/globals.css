@@ -5,6 +5,13 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    /* Self-hosted via @fontsource-variable (no Google Fonts network dependency) */
+    --font-sans-en: "Inter Variable";
+    --font-sans-fa: "Vazirmatn Variable";
+    --font-mono: "JetBrains Mono Variable";
+  }
+
   * {
     @apply border-border;
   }
