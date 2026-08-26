@@ -43,7 +43,10 @@ async def request_phone_otp(
         return PhoneOtpRequestResult(accepted=False, sent=False, error="rate_limited")
     if not await allow_request(f"{rl_phone}:hour", limit=3, window_seconds=3600):
         return PhoneOtpRequestResult(accepted=False, sent=False, error="rate_limited")
-    if rl_extra and not await allow_request(rl_extra, limit=1, window_seconds=30):
+    # Per-client budget (aligned with public router otp_req:*). Must allow several
+    # distinct phones from one IP within a window — otherwise anti-enumeration
+    # probes and typo retries incorrectly surface as 429.
+    if rl_extra and not await allow_request(rl_extra, limit=10, window_seconds=60):
         return PhoneOtpRequestResult(accepted=False, sent=False, error="rate_limited")
 
     repo = OrgBotRepository(db)

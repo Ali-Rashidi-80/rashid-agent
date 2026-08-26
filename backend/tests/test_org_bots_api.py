@@ -109,9 +109,11 @@ async def test_org_bot_phone_allowlist_and_public_otp_request(
     assert listed.status_code == 200
     assert len(listed.json()) == 1
 
-    # Public request always neutral 200
+    # Public request always neutral 200 (anti-enumeration); use distinct
+    # forwarded IPs so shared CI Redis rate buckets do not collide.
     req = await live_client.post(
         f"/api/v1/public/bots/{slug}/otp/request",
+        headers={"X-Forwarded-For": "203.0.113.10"},
         json={"phone": "09121234567"},
     )
     assert req.status_code == 200
@@ -119,6 +121,7 @@ async def test_org_bot_phone_allowlist_and_public_otp_request(
 
     unknown = await live_client.post(
         f"/api/v1/public/bots/{slug}/otp/request",
+        headers={"X-Forwarded-For": "203.0.113.11"},
         json={"phone": "09129876543"},
     )
     assert unknown.status_code == 200
