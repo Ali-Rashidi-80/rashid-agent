@@ -2,6 +2,10 @@
 
 [English](README.md) | **فارسی**
 
+<p align="center">
+  <img src="docs/assets/rashid-logo.jpg" alt="لوگوی همیار کد رشید" width="220" />
+</p>
+
 [![CI](https://github.com/Ali-Rashidi-80/rashid-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/Ali-Rashidi-80/rashid-agent/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![Node.js 20+](https://img.shields.io/badge/node-20%2B-brightgreen.svg)](https://nodejs.org/)
