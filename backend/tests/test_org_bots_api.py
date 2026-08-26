@@ -92,7 +92,8 @@ async def test_org_bot_phone_allowlist_and_public_otp_request(
     bad = await live_client.post(
         f"/api/v1/org-bots/{bot_id}/phones",
         headers=headers,
-        json={"phone": "123"},
+        # Long enough for schema (min_length=8) but not a valid Iranian mobile → 400
+        json={"phone": "12345678"},
     )
     assert bad.status_code == 400
 

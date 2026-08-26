@@ -91,7 +91,7 @@ async def test_telegram_webhook_secret_and_login(live_client: AsyncClient, super
 
     sent: list[str] = []
 
-    async def fake_send(*, api_base, bot_token, chat_id, text):
+    async def fake_send(*, api_base, bot_token, chat_id, text, reply_markup=None, **_kwargs):
         sent.append(text)
 
     with (
@@ -196,7 +196,7 @@ async def test_telegram_webhook_works_with_platform_token_required(
     path = f"/api/v1/integrations/telegram/webhook/{integration['id']}"
     sent: list[str] = []
 
-    async def fake_send(*, api_base, bot_token, chat_id, text):
+    async def fake_send(*, api_base, bot_token, chat_id, text, reply_markup=None, **_kwargs):
         sent.append(text)
 
     with (
@@ -271,7 +271,7 @@ async def test_bale_webhook_login_flow(live_client: AsyncClient, super_headers):
     path = f"/api/v1/integrations/bale/webhook/{integration.json()['id']}"
     sent: list[str] = []
 
-    async def fake_send(*, api_base, bot_token, chat_id, text):
+    async def fake_send(*, api_base, bot_token, chat_id, text, reply_markup=None, **_kwargs):
         assert "bale.ai" in api_base
         sent.append(text)
 
