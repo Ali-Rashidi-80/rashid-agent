@@ -59,7 +59,9 @@ def fuzzy_ratio(actual: str, expected: str) -> float:
     return difflib.SequenceMatcher(None, normalize_text(actual), normalize_text(expected)).ratio()
 
 
-def apply_line_edits_to_lines(lines: list[str], edits: list[LineEdit], *, verify: bool = True) -> tuple[list[str], list[dict], list[dict]]:
+def apply_line_edits_to_lines(
+    lines: list[str], edits: list[LineEdit], *, verify: bool = True
+) -> tuple[list[str], list[dict], list[dict]]:
     applied: list[dict] = []
     failed: list[dict] = []
 

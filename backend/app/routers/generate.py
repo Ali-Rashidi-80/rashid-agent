@@ -46,7 +46,11 @@ async def post_generate_stream(
             session_id=body.session_id,
             project_path=body.project_path,
             model=body.model,
+            provider=body.provider,
             db=db,
+            knowledge_base_id=body.knowledge_base_id,
+            rag_only=body.rag_only,
+            tenant_id=body.tenant_id,
             is_disconnected=is_disconnected,
         ):
             yield chunk
@@ -98,7 +102,11 @@ async def post_generate_sync(
         session_id=body.session_id,
         project_path=body.project_path,
         model=body.model,
+        provider=body.provider,
         db=db,
+        knowledge_base_id=body.knowledge_base_id,
+        rag_only=body.rag_only,
+        tenant_id=body.tenant_id,
     ):
         stream_text.append(chunk)
     for event, data in parse_sse_chunks("".join(stream_text)):

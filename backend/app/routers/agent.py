@@ -24,6 +24,7 @@ class AgentRunRequest(BaseModel):
     project_path: str | None = None
     session_id: str | None = None
     model: str | None = None
+    provider: str | None = None
 
 
 class PlanRequest(BaseModel):
@@ -72,6 +73,7 @@ async def agent_run(
         session_id=body.session_id,
         request_id=request_id,
         model=body.model,
+        provider=body.provider,
     )
 
 
@@ -121,4 +123,4 @@ async def agent_queue(
             "stream_path": f"/api/v1/generate/stream/{request_id}",
         }
     finally:
-        await pool.aclose()
+        await pool.aclose()  # type: ignore[attr-defined]

@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useAgentStore, type AgentResult } from "@/lib/agent-store";
 import { ensureChatSession, fetchProjectPath, titleFromPrompt } from "@/lib/session-api";
+import { readTenantAuth } from "@/lib/tenant-auth";
 import { parseSSEBlock } from "./sse-parser";
 import { initialSSEState, reduceSSEState, type SSEStreamState } from "./sse-state";
 
@@ -19,6 +20,7 @@ export interface UseSSEResult {
   error: string | null;
   phase: SSEStreamState["phase"];
   result: AgentResult | null;
+  sources: SSEStreamState["sources"];
   start: (payload: SSEStreamPayload) => Promise<void>;
   stop: () => void;
   reset: () => void;
@@ -91,7 +93,10 @@ async function consumeSSEBody(
 
 export function useSSE(endpoint = "/api/v1/generate/stream"): UseSSEResult {
   const mode = useAgentStore((s) => s.mode);
+  const provider = useAgentStore((s) => s.provider);
   const model = useAgentStore((s) => s.model);
+  const knowledgeBaseId = useAgentStore((s) => s.knowledgeBaseId);
+  const ragOnly = useAgentStore((s) => s.ragOnly);
   const sessionId = useAgentStore((s) => s.sessionId);
   const setSessionId = useAgentStore((s) => s.setSessionId);
   const setPhase = useAgentStore((s) => s.setPhase);
@@ -140,24 +145,29 @@ export function useSSE(endpoint = "/api/v1/generate/stream"): UseSSEResult {
       };
 
       try {
-        const projectPath = await fetchProjectPath();
-        if (!projectPath) {
-          throw new Error("Project path is not configured");
-        }
         const promptText = String(payload.prompt ?? "");
         appendTurn({
           id: `local-user-${Date.now()}`,
           role: "user",
           content: promptText,
         });
-        const activeSessionId = await ensureChatSession(
-          projectPath,
-          mode,
-          sessionId,
-          titleFromPrompt(promptText, mode),
-        );
-        if (activeSessionId !== sessionId) {
-          setSessionId(activeSessionId);
+
+        const ragMode = Boolean(knowledgeBaseId && ragOnly);
+        let activeSessionId = sessionId;
+        if (!ragMode) {
+          const projectPath = await fetchProjectPath();
+          if (!projectPath) {
+            throw new Error("Project path is not configured");
+          }
+          activeSessionId = await ensureChatSession(
+            projectPath,
+            mode,
+            sessionId,
+            titleFromPrompt(promptText, mode),
+          );
+          if (activeSessionId !== sessionId) {
+            setSessionId(activeSessionId);
+          }
         }
 
         const response = await fetch(endpoint, {
@@ -168,9 +178,13 @@ export function useSSE(endpoint = "/api/v1/generate/stream"): UseSSEResult {
           },
           body: JSON.stringify({
             ...payload,
-            mode,
+            mode: ragMode ? "ask" : mode,
+            provider,
             model,
             session_id: activeSessionId,
+            knowledge_base_id: knowledgeBaseId || undefined,
+            rag_only: ragMode,
+            tenant_id: readTenantAuth()?.tenantId,
           }),
           signal: controller.signal,
         });
@@ -252,7 +266,19 @@ export function useSSE(endpoint = "/api/v1/generate/stream"): UseSSEResult {
         abortRef.current = null;
       }
     },
-    [appendTurn, endpoint, mode, model, sessionId, setPhase, setSessionId, stop],
+    [
+      appendTurn,
+      endpoint,
+      knowledgeBaseId,
+      mode,
+      model,
+      provider,
+      ragOnly,
+      sessionId,
+      setPhase,
+      setSessionId,
+      stop,
+    ],
   );
 
   return {
@@ -261,6 +287,7 @@ export function useSSE(endpoint = "/api/v1/generate/stream"): UseSSEResult {
     error: state.error,
     phase: state.phase,
     result: state.result,
+    sources: state.sources,
     start,
     stop,
     reset,

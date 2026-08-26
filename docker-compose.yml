@@ -1,28 +1,49 @@
+# Rashid Agent — local / hybrid Docker stack
+# Infra (default): postgres + redis
+# Full stack: docker compose --profile full up -d
+#   or: .\scripts\stack-up.ps1
+#
+# Images pull via Chabokan registry mirror (override with *_IMAGE env).
+# Docs: docs/deployment.md · docs/mirrors-iran-fa.md
+
+name: rashid-agent
+
+x-backend-build: &backend-build
+  context: .
+  dockerfile: backend/Dockerfile
+  args:
+    PYTHON_IMAGE: ${PYTHON_IMAGE:-mirror2.chabokan.net/library/python:3.11-slim-bookworm}
+
 services:
   postgres:
-    image: postgres:16-alpine
+    image: ${POSTGRES_IMAGE:-mirror2.chabokan.net/pgvector/pgvector:pg16}
+    container_name: rashid-postgres
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: rashid
-      POSTGRES_PASSWORD: rashid
-      POSTGRES_DB: rashid
+      POSTGRES_USER: ${POSTGRES_USER:-rashid}
+      # Local hybrid default only when .env omits it — never commit real passwords.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rashid}
+      POSTGRES_DB: ${POSTGRES_DB:-rashid}
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${POSTGRES_PUBLISH_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U rashid -d rashid"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-rashid} -d $${POSTGRES_DB:-rashid}"]
       interval: 5s
       timeout: 5s
       retries: 10
       start_period: 10s
 
   redis:
-    image: redis:7-alpine
+    image: ${REDIS_IMAGE:-mirror2.chabokan.net/library/redis:7-alpine}
+    container_name: rashid-redis
+    restart: unless-stopped
     command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy noeviction
     volumes:
       - redisdata:/data
     ports:
-      - "127.0.0.1:6380:6379"
+      - "127.0.0.1:${REDIS_PUBLISH_PORT:-6380}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -30,18 +51,40 @@ services:
       retries: 10
       start_period: 5s
 
-  api:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
+  migrate:
+    build: *backend-build
+    container_name: rashid-migrate
     env_file:
-      - .env
-    ports:
-      - "127.0.0.1:8000:8000"
+      - path: .env
+        required: false
     environment:
-      DATABASE_URL: postgresql+asyncpg://rashid:rashid@postgres:5432/rashid
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-rashid}:${POSTGRES_PASSWORD:-rashid}@postgres:5432/${POSTGRES_DB:-rashid}
+      RASHID_SKIP_MIGRATE: "0"
+    entrypoint: ["/app/backend/start.sh"]
+    command: ["true"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - full
+    restart: "no"
+
+  api:
+    build: *backend-build
+    container_name: rashid-api
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    ports:
+      - "127.0.0.1:${API_PUBLISH_PORT:-8000}:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-rashid}:${POSTGRES_PASSWORD:-rashid}@postgres:5432/${POSTGRES_DB:-rashid}
       REDIS_URL: redis://redis:6379/0
       ARQ_REDIS_URL: redis://redis:6379/1
+      RASHID_HOST: 0.0.0.0
+      RASHID_PORT: "8000"
+      RASHID_SKIP_MIGRATE: "1"
     volumes:
       - ./backend/data:/app/backend/data
     depends_on:
@@ -49,26 +92,37 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health')"]
+      test:
+        [
+          "CMD",
+          "curl",
+          "-fsS",
+          "http://127.0.0.1:8000/api/v1/health",
+        ]
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 20s
+      start_period: 40s
     profiles:
       - full
 
   worker:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
+    build: *backend-build
+    container_name: rashid-worker
+    restart: unless-stopped
     env_file:
-      - .env
-    command: arq worker.settings.WorkerSettings
+      - path: .env
+        required: false
+    entrypoint: ["/app/backend/start.sh"]
+    command: ["arq", "worker.settings.WorkerSettings"]
     environment:
-      DATABASE_URL: postgresql+asyncpg://rashid:rashid@postgres:5432/rashid
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-rashid}:${POSTGRES_PASSWORD:-rashid}@postgres:5432/${POSTGRES_DB:-rashid}
       REDIS_URL: redis://redis:6379/0
       ARQ_REDIS_URL: redis://redis:6379/1
+      RASHID_SKIP_MIGRATE: "1"
     volumes:
       - ./backend/data:/app/backend/data
     depends_on:
@@ -76,19 +130,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    profiles:
-      - full
-
-  migrate:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
-    command: alembic upgrade head
-    environment:
-      DATABASE_URL: postgresql+asyncpg://rashid:rashid@postgres:5432/rashid
-    depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      disable: true
     profiles:
       - full
 
@@ -97,11 +142,15 @@ services:
       context: .
       dockerfile: frontend/Dockerfile
       args:
+        NODE_IMAGE: ${NODE_IMAGE:-mirror2.chabokan.net/library/node:20-alpine}
         BACKEND_URL: http://api:8000
+    container_name: rashid-web
+    restart: unless-stopped
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:${WEB_PUBLISH_PORT:-3000}:3000"
     environment:
       BACKEND_URL: http://api:8000
+      RASHID_TOKEN: ${RASHID_TOKEN:-}
     depends_on:
       api:
         condition: service_healthy
@@ -110,7 +159,7 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
-      start_period: 30s
+      start_period: 40s
     profiles:
       - full
 

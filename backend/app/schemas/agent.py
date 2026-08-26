@@ -32,6 +32,10 @@ class GenerateRequest(BaseModel):
     session_id: str | None = None
     project_path: str | None = None
     model: str | None = None
+    provider: str | None = None
+    knowledge_base_id: str | None = None
+    rag_only: bool = False
+    tenant_id: str | None = None
 
 
 class StreamEvent(BaseModel):

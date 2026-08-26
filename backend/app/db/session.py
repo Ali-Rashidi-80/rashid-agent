@@ -1,5 +1,6 @@
 from collections.abc import AsyncGenerator
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.config.settings import Settings
@@ -37,6 +38,8 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
         raise RuntimeError("Database not initialized")
     async with _session_factory() as session:
         try:
+            # Clear any leaked SET ROLE from a previous pooled checkout.
+            await session.execute(text("RESET ROLE"))
             yield session
         finally:
             await session.close()

@@ -23,6 +23,10 @@ def test_file_edit():
 def test_generate_request():
     g = GenerateRequest(prompt="hi", mode="ask")
     assert g.mode == "ask"
+    assert g.provider is None
+    g2 = GenerateRequest(prompt="hi", mode="ask", provider="openai", model="gpt-4o-mini")
+    assert g2.provider == "openai"
+    assert g2.model == "gpt-4o-mini"
 
 
 def test_error_response():

@@ -1,6 +1,12 @@
 import type { AgentResult, StreamPhase } from "@/lib/agent-store";
 import type { SSEParsedEvent } from "./sse-parser";
 
+export interface RagSource {
+  filename: string;
+  excerpt: string;
+  score: number;
+}
+
 export interface SSEStreamState {
   content: string;
   error: string | null;
@@ -8,6 +14,7 @@ export interface SSEStreamState {
   phase: StreamPhase;
   result: AgentResult | null;
   requestId: string | null;
+  sources: RagSource[];
 }
 
 export const initialSSEState: SSEStreamState = {
@@ -17,6 +24,7 @@ export const initialSSEState: SSEStreamState = {
   phase: "idle",
   result: null,
   requestId: null,
+  sources: [],
 };
 
 function parseAgentResult(data: Record<string, unknown>): AgentResult {
@@ -53,6 +61,18 @@ export function reduceSSEState(
 
   if (type === "context") {
     next.requestId = typeof data.request_id === "string" ? data.request_id : previous.requestId;
+    return next;
+  }
+
+  if (type === "sources") {
+    const rows = Array.isArray(data.sources) ? data.sources : [];
+    next.sources = rows
+      .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
+      .map((item) => ({
+        filename: typeof item.filename === "string" ? item.filename : "document",
+        excerpt: typeof item.excerpt === "string" ? item.excerpt : "",
+        score: typeof item.score === "number" ? item.score : 0,
+      }));
     return next;
   }
 

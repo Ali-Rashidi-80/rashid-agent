@@ -6,7 +6,9 @@ from shlex import split as shlex_split
 ALLOWED_PIP_PREFIXES = ("install", "uninstall", "list", "show", "freeze")
 
 
-def normalize_pip_args(args: list[str] | None = None, command: str | None = None) -> list[str] | None:
+def normalize_pip_args(
+    args: list[str] | None = None, command: str | None = None
+) -> list[str] | None:
     if args:
         return args
     if not command:

@@ -31,7 +31,10 @@ export interface ChatTurn {
 
 interface AgentStore {
   mode: AgentMode;
+  provider: string;
   model: string;
+  knowledgeBaseId: string | null;
+  ragOnly: boolean;
   sessionId: string | null;
   phase: StreamPhase;
   transcript: ChatTurn[];
@@ -43,7 +46,11 @@ interface AgentStore {
   hydrated: boolean;
   setMode: (mode: AgentMode) => void;
   cycleMode: () => void;
+  setProvider: (provider: string) => void;
   setModel: (model: string) => void;
+  setProviderModel: (provider: string, model: string) => void;
+  setKnowledgeBaseId: (id: string | null) => void;
+  setRagOnly: (value: boolean) => void;
   setSessionId: (sessionId: string | null) => void;
   setPhase: (phase: StreamPhase) => void;
   setTranscript: (turns: ChatTurn[]) => void;
@@ -60,12 +67,16 @@ interface AgentStore {
 }
 
 const MODE_ORDER: AgentMode[] = ["ask", "plan", "agent"];
+const DEFAULT_PROVIDER = "grok";
 const DEFAULT_MODEL = "grok-code-fast-1";
 const STORAGE_KEY = "rashid-agent-ui";
 
 interface PersistedUi {
   mode?: AgentMode;
+  provider?: string;
   model?: string;
+  knowledgeBaseId?: string | null;
+  ragOnly?: boolean;
   sidebarOpen?: boolean;
   splitRatio?: number;
   panelFocus?: PanelFocus;
@@ -100,7 +111,10 @@ function writePersisted(partial: PersistedUi) {
 
 export const useAgentStore = create<AgentStore>((set, get) => ({
   mode: "ask",
+  provider: DEFAULT_PROVIDER,
   model: DEFAULT_MODEL,
+  knowledgeBaseId: null,
+  ragOnly: false,
   sessionId: null,
   phase: "idle",
   transcript: [],
@@ -120,9 +134,25 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     writePersisted({ mode: next });
     set({ mode: next });
   },
+  setProvider: (provider) => {
+    writePersisted({ provider });
+    set({ provider });
+  },
   setModel: (model) => {
     writePersisted({ model });
     set({ model });
+  },
+  setProviderModel: (provider, model) => {
+    writePersisted({ provider, model });
+    set({ provider, model });
+  },
+  setKnowledgeBaseId: (knowledgeBaseId) => {
+    writePersisted({ knowledgeBaseId });
+    set({ knowledgeBaseId });
+  },
+  setRagOnly: (ragOnly) => {
+    writePersisted({ ragOnly });
+    set({ ragOnly });
   },
   setSessionId: (sessionId) => set({ sessionId }),
   setPhase: (phase) => set({ phase }),
@@ -165,7 +195,14 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     set({
       hydrated: true,
       mode: stored.mode === "ask" || stored.mode === "plan" || stored.mode === "agent" ? stored.mode : "ask",
+      provider:
+        typeof stored.provider === "string" && stored.provider ? stored.provider : DEFAULT_PROVIDER,
       model: typeof stored.model === "string" && stored.model ? stored.model : DEFAULT_MODEL,
+      knowledgeBaseId:
+        typeof stored.knowledgeBaseId === "string" && stored.knowledgeBaseId
+          ? stored.knowledgeBaseId
+          : null,
+      ragOnly: Boolean(stored.ragOnly),
       sidebarOpen: stored.sidebarOpen ?? true,
       splitRatio:
         typeof stored.splitRatio === "number" ? Math.min(0.8, Math.max(0.2, stored.splitRatio)) : 0.55,

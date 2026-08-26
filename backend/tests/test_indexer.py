@@ -4,6 +4,7 @@ import tempfile
 from pathlib import Path
 
 import pytest
+
 from app.services.indexer import DEFAULT_EXCLUDES, load_rashidignore, should_skip
 
 

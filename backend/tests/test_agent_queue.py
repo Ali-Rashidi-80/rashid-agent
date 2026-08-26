@@ -3,9 +3,9 @@
 import tempfile
 
 import pytest
-from app.main import app
 from httpx import ASGITransport, AsyncClient
 
+from app.main import app
 from tests.infra_markers import INFRA_AVAILABLE
 
 

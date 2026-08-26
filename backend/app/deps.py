@@ -1,4 +1,3 @@
-
 from app.config.settings import Settings, get_settings
 from app.db.session import get_db_session
 from app.services.project_path import ProjectPathService

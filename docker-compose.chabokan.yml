@@ -1,0 +1,177 @@
+# ============================================================
+# Rashid Agent — raw Docker stack for Chabokan / remote VPS
+# ============================================================
+# All services always-on (no Compose profiles). Base images from
+# mirror2.chabokan.net. Split alternative: backend/docker-compose.yml
+# + root frontend-only compose in docs/deployment.md.
+#
+# Usage:
+#   cp .env.example .env   # fill secrets
+#   docker compose -f docker-compose.chabokan.yml --env-file .env build
+#   docker compose -f docker-compose.chabokan.yml --env-file .env up -d
+#
+# Mirror (local DR clone): docker-compose.local-mirror.yml
+# ============================================================
+
+name: rashid-chabokan
+
+x-backend-build: &backend-build
+  context: .
+  dockerfile: backend/Dockerfile
+  args:
+    PYTHON_IMAGE: ${PYTHON_IMAGE:-mirror2.chabokan.net/library/python:3.11-slim-bookworm}
+
+# Secrets/config from `docker compose --env-file …` (overrides optional env_file).
+x-app-env: &app-env
+  DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-rashid}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-rashid}
+  REDIS_URL: redis://redis:6379/0
+  ARQ_REDIS_URL: redis://redis:6379/1
+  RASHID_HOST: "0.0.0.0"
+  RASHID_PORT: "8000"
+  RASHID_SKIP_MIGRATE: "1"
+  METIS_API_KEY: ${METIS_API_KEY:-}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  METIS_BASE_URL: ${METIS_BASE_URL:-https://api.metisai.ir/api/v1/wrapper/grok}
+  SECRETS_ENCRYPTION_KEY: ${SECRETS_ENCRYPTION_KEY:-}
+  RASHID_TOKEN: ${RASHID_TOKEN:-}
+  RASHID_MODEL: ${RASHID_MODEL:-grok-code-fast-1}
+  RASHID_PROVIDER: ${RASHID_PROVIDER:-grok}
+  RASHID_DEBUG: ${RASHID_DEBUG:-0}
+  TENANT_SEED_ADMIN_USER: ${TENANT_SEED_ADMIN_USER:-}
+  TENANT_SEED_ADMIN_PASSWORD: ${TENANT_SEED_ADMIN_PASSWORD:-}
+  TENANT_SEED_CODE_PROJECT_PATH: ${TENANT_SEED_CODE_PROJECT_PATH:-}
+  KB_EMBED_HASH_FALLBACK: ${KB_EMBED_HASH_FALLBACK:-false}
+  KB_EMBEDDING_MODEL: ${KB_EMBEDDING_MODEL:-text-embedding-3-small}
+
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:-mirror2.chabokan.net/pgvector/pgvector:pg16}
+    container_name: rashid-chabokan-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-rashid}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-rashid}
+    volumes:
+      - chabokan_pgdata:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PUBLISH_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-rashid} -d $${POSTGRES_DB:-rashid}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  redis:
+    image: ${REDIS_IMAGE:-mirror2.chabokan.net/library/redis:7-alpine}
+    container_name: rashid-chabokan-redis
+    restart: unless-stopped
+    # For requirepass, set command + REDIS_URL in a custom override; default is open on private network.
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy noeviction
+    volumes:
+      - chabokan_redis:/data
+    ports:
+      - "${REDIS_PUBLISH_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  migrate:
+    build: *backend-build
+    container_name: rashid-chabokan-migrate
+    env_file:
+      - path: ${RASHID_COMPOSE_ENV_FILE:-.env}
+        required: false
+    environment:
+      <<: *app-env
+      RASHID_SKIP_MIGRATE: "0"
+    entrypoint: ["/app/backend/start.sh"]
+    command: ["true"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build: *backend-build
+    container_name: rashid-chabokan-api
+    restart: unless-stopped
+    env_file:
+      - path: ${RASHID_COMPOSE_ENV_FILE:-.env}
+        required: false
+    ports:
+      - "${API_PUBLISH_PORT:-8000}:8000"
+    environment:
+      <<: *app-env
+    volumes:
+      - kb_data:/app/backend/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/api/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 45s
+
+  worker:
+    build: *backend-build
+    container_name: rashid-chabokan-worker
+    restart: unless-stopped
+    env_file:
+      - path: ${RASHID_COMPOSE_ENV_FILE:-.env}
+        required: false
+    entrypoint: ["/app/backend/start.sh"]
+    command: ["arq", "worker.settings.WorkerSettings"]
+    environment:
+      <<: *app-env
+    volumes:
+      - kb_data:/app/backend/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    # Image HEALTHCHECK probes the API port; worker is ARQ-only.
+    healthcheck:
+      disable: true
+
+  web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:-mirror2.chabokan.net/library/node:20-alpine}
+        BACKEND_URL: http://api:8000
+    container_name: rashid-chabokan-web
+    restart: unless-stopped
+    ports:
+      - "${WEB_PUBLISH_PORT:-3000}:3000"
+    environment:
+      BACKEND_URL: http://api:8000
+      RASHID_TOKEN: ${RASHID_TOKEN:-}
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/fa"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 45s
+
+volumes:
+  chabokan_pgdata:
+  chabokan_redis:
+  kb_data:

@@ -3,6 +3,7 @@
 import tempfile
 
 import pytest
+
 from app.config.settings import get_settings
 from app.domain.sse_events import parse_sse_chunks
 from app.schemas.agent import AgentResponse, FileEdit, LineEdit

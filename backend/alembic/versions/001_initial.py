@@ -27,7 +27,11 @@ def upgrade() -> None:
     op.create_table(
         "messages",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("session_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("sessions.id", ondelete="CASCADE")),
+        sa.Column(
+            "session_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("sessions.id", ondelete="CASCADE"),
+        ),
         sa.Column("role", sa.String(32), nullable=False),
         sa.Column("content", sa.Text(), nullable=False),
         sa.Column("token_count_est", sa.Integer(), nullable=True),
@@ -38,7 +42,11 @@ def upgrade() -> None:
     op.create_table(
         "agent_events",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("session_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("sessions.id", ondelete="CASCADE")),
+        sa.Column(
+            "session_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("sessions.id", ondelete="CASCADE"),
+        ),
         sa.Column("request_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("type", sa.String(64), nullable=False),
         sa.Column("payload", postgresql.JSONB(), nullable=False),
@@ -49,7 +57,11 @@ def upgrade() -> None:
     op.create_table(
         "checkpoints",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("session_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("sessions.id", ondelete="CASCADE")),
+        sa.Column(
+            "session_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("sessions.id", ondelete="CASCADE"),
+        ),
         sa.Column("backup_version", sa.Integer(), nullable=True),
         sa.Column("label", sa.Text(), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
@@ -58,7 +70,11 @@ def upgrade() -> None:
     op.create_table(
         "generate_jobs",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("session_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("sessions.id", ondelete="SET NULL")),
+        sa.Column(
+            "session_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("sessions.id", ondelete="SET NULL"),
+        ),
         sa.Column("status", sa.String(32), nullable=False, server_default="queued"),
         sa.Column("result", postgresql.JSONB(), nullable=True),
         sa.Column("error_code", sa.String(64), nullable=True),

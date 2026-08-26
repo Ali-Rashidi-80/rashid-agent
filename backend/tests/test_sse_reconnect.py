@@ -3,9 +3,9 @@
 import uuid
 
 import pytest
-from app.main import app
 from httpx import ASGITransport, AsyncClient
 
+from app.main import app
 from tests.infra_markers import requires_infra
 
 pytestmark = requires_infra

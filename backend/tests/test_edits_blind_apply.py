@@ -3,9 +3,10 @@
 import tempfile
 
 import pytest
+from httpx import ASGITransport, AsyncClient
+
 from app.config.settings import get_settings
 from app.main import app
-from httpx import ASGITransport, AsyncClient
 
 
 @pytest.mark.asyncio

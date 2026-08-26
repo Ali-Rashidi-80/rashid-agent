@@ -19,19 +19,34 @@ def _safe_message(exc: Exception) -> str:
 
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(StarletteHTTPException)
-    async def http_exception_handler(_request: Request, exc: StarletteHTTPException) -> JSONResponse:
-        detail = exc.detail if isinstance(exc.detail, str) else str(exc.detail)
+    async def http_exception_handler(
+        _request: Request, exc: StarletteHTTPException
+    ) -> JSONResponse:
+        if isinstance(exc.detail, dict):
+            nested = exc.detail.get("error")
+            if isinstance(nested, dict):
+                code = str(nested.get("code") or f"http_{exc.status_code}")
+                message = str(nested.get("message") or code)
+            else:
+                code = str(exc.detail.get("code") or f"http_{exc.status_code}")
+                message = str(exc.detail.get("message") or code)
+        else:
+            detail = exc.detail if isinstance(exc.detail, str) else str(exc.detail)
+            code = f"http_{exc.status_code}"
+            message = detail
         body = ErrorResponse(
             error=ErrorBody(
-                code=f"http_{exc.status_code}",
-                message=detail,
-                message_fa=detail,
+                code=code,
+                message=message,
+                message_fa=message,
             )
         )
         return JSONResponse(status_code=exc.status_code, content=body.model_dump())
 
     @app.exception_handler(RequestValidationError)
-    async def validation_exception_handler(_request: Request, exc: RequestValidationError) -> JSONResponse:
+    async def validation_exception_handler(
+        _request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
         body = ErrorResponse(
             error=ErrorBody(
                 code="validation_error",

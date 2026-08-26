@@ -21,7 +21,7 @@ function buildTargetUrl(path: string[], search: string) {
   return `${BACKEND_URL}/api/v1${suffix}${search}`;
 }
 
-function forwardRequestHeaders(request: Request): Headers {
+function forwardRequestHeaders(request: Request, path: string[]): Headers {
   const headers = new Headers();
 
   request.headers.forEach((value, key) => {
@@ -30,8 +30,10 @@ function forwardRequestHeaders(request: Request): Headers {
     }
   });
 
+  // Public bot gate uses its own session bearer — never inject platform token.
+  const isPublic = path[0] === "public";
   const apiToken = process.env.RASHID_TOKEN?.trim();
-  if (apiToken && !headers.has("Authorization")) {
+  if (!isPublic && apiToken && !headers.has("Authorization")) {
     headers.set("Authorization", `Bearer ${apiToken}`);
   }
 
@@ -56,7 +58,7 @@ async function proxyRequest(request: Request, path: string[]) {
   const method = request.method.toUpperCase();
   const init: RequestInit = {
     method,
-    headers: forwardRequestHeaders(request),
+    headers: forwardRequestHeaders(request, path),
     redirect: "manual",
   };
 

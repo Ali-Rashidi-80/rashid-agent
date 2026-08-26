@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Home, Plus, Settings } from "lucide-react";
+import { BookOpen, Bot, Home, Plus, Settings } from "lucide-react";
 import { Link, usePathname } from "@/i18n/navigation";
 import { SessionHistory } from "@/components/shell/SessionHistory";
 import { useAgentStore } from "@/lib/agent-store";
@@ -16,6 +16,8 @@ interface SidebarProps {
 
 const navItems = [
   { href: "/", icon: Home, key: "home" as const },
+  { href: "/knowledge", icon: BookOpen, key: "knowledge" as const },
+  { href: "/bots", icon: Bot, key: "bots" as const },
   { href: "/settings", icon: Settings, key: "settings" as const },
 ];
 

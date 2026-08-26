@@ -1,7 +1,7 @@
 """Metis service tests (mock)."""
 
-
 import pytest
+
 from app.config.settings import Settings
 from app.services.metis import MetisService, fix_and_parse_json, parse_stream_delta
 

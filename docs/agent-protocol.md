@@ -1,4 +1,6 @@
-# SSE Events — `/api/v1/generate/stream`
+# SSE events — `/api/v1/generate/stream`
+
+**English** | [فارسی](agent-protocol.fa.md)
 
 | Event | Data |
 |-------|------|

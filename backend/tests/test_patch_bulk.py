@@ -1,6 +1,7 @@
 """Additional patch edge cases for regression gate."""
 
 import pytest
+
 from app.domain.patch_engine import LineEdit, preview_patch
 
 

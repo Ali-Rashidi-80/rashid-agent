@@ -1,8 +1,11 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Loader2, Send, Square } from "lucide-react";
+import { listKnowledgeBases, type KnowledgeBase } from "@/lib/knowledge-api";
+import { readTenantAuth } from "@/lib/tenant-auth";
+import { useAgentStore } from "@/lib/agent-store";
 import { cn } from "@/lib/cn";
 
 interface PromptComposerProps {
@@ -22,6 +25,33 @@ export function PromptComposer({
 }: PromptComposerProps) {
   const t = useTranslations("chat");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const knowledgeBaseId = useAgentStore((s) => s.knowledgeBaseId);
+  const ragOnly = useAgentStore((s) => s.ragOnly);
+  const setKnowledgeBaseId = useAgentStore((s) => s.setKnowledgeBaseId);
+  const setRagOnly = useAgentStore((s) => s.setRagOnly);
+  const [bases, setBases] = useState<KnowledgeBase[]>([]);
+
+  useEffect(() => {
+    if (!readTenantAuth()) {
+      setBases([]);
+      return;
+    }
+    let cancelled = false;
+    void listKnowledgeBases()
+      .then((rows) => {
+        if (!cancelled) {
+          setBases(rows);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setBases([]);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) {
@@ -40,7 +70,39 @@ export function PromptComposer({
   }, []);
 
   return (
-    <div className="glass-panel sticky top-0 z-10 p-3">
+    <div className="glass-panel sticky top-0 z-10 space-y-2 p-3">
+      <div className="flex flex-wrap items-center gap-3 text-xs">
+        <label className="inline-flex items-center gap-1.5 text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={ragOnly}
+            onChange={(event) => setRagOnly(event.target.checked)}
+            disabled={isStreaming}
+            className="rounded border-border"
+          />
+          {t("ragOnly")}
+        </label>
+        <label className="inline-flex items-center gap-1.5 text-muted-foreground">
+          <span>{t("knowledgeBase")}</span>
+          <select
+            value={knowledgeBaseId ?? ""}
+            onChange={(event) => setKnowledgeBaseId(event.target.value || null)}
+            disabled={isStreaming}
+            className="max-w-[220px] rounded-md border border-border bg-background px-2 py-1 text-foreground"
+          >
+            <option value="">{t("noKnowledgeBase")}</option>
+            {bases.map((kb) => (
+              <option key={kb.id} value={kb.id}>
+                {kb.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        {ragOnly && !knowledgeBaseId ? (
+          <span className="text-amber-700 dark:text-amber-300">{t("ragNeedsKb")}</span>
+        ) : null}
+      </div>
+
       <div className="flex items-end gap-2">
         <textarea
           ref={textareaRef}
@@ -72,7 +134,7 @@ export function PromptComposer({
           <button
             type="button"
             onClick={onSubmit}
-            disabled={!value.trim()}
+            disabled={!value.trim() || (ragOnly && !knowledgeBaseId)}
             className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50"
           >
             {isStreaming ? (

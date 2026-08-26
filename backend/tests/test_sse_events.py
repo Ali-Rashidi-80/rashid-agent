@@ -20,4 +20,4 @@ def test_parse_sse_chunks_multiple_events():
 
 
 def test_parse_sse_block_ignores_invalid_json():
-    assert parse_sse_block('event: bad\ndata: not-json') is None
+    assert parse_sse_block("event: bad\ndata: not-json") is None

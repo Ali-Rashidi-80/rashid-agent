@@ -24,7 +24,7 @@ function guessLanguage(path: string): string {
 export default function HomePage() {
   const t = useTranslations("chat");
   const [prompt, setPrompt] = useState("");
-  const { content, isStreaming, error, phase, result, start, stop, reset } = useSSE();
+  const { content, isStreaming, error, phase, result, sources, start, stop, reset } = useSSE();
   const { preview, apply, isLoading, error: editsError } = useEdits();
   const { pipLog, runPip, isRunning: pipRunning } = usePipRunner();
   const [original, setOriginal] = useState("");
@@ -143,6 +143,7 @@ export default function HomePage() {
             pipCommand={activeResult?.pip?.trim() || undefined}
             onRunPip={runPip}
             pipRunning={pipRunning}
+            sources={sources}
           />
         }
         diff={

@@ -1,11 +1,12 @@
 """Health HTTP status tests."""
 
 import pytest
+from httpx import ASGITransport, AsyncClient
+
 from app.config.settings import Settings
 from app.main import app
 from app.schemas.health import HealthComponent
 from app.services import health as health_service
-from httpx import ASGITransport, AsyncClient
 
 
 @pytest.mark.asyncio

@@ -20,12 +20,18 @@ class Session(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    messages: Mapped[list["Message"]] = relationship(back_populates="session", cascade="all, delete-orphan")
-    events: Mapped[list["AgentEvent"]] = relationship(back_populates="session", cascade="all, delete-orphan")
+    messages: Mapped[list["Message"]] = relationship(
+        back_populates="session", cascade="all, delete-orphan"
+    )
+    events: Mapped[list["AgentEvent"]] = relationship(
+        back_populates="session", cascade="all, delete-orphan"
+    )
     checkpoints: Mapped[list["Checkpoint"]] = relationship(
         back_populates="session", cascade="all, delete-orphan"
     )
-    jobs: Mapped[list["GenerateJob"]] = relationship(back_populates="session", cascade="all, delete-orphan")
+    jobs: Mapped[list["GenerateJob"]] = relationship(
+        back_populates="session", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (Index("idx_sessions_project", "project_path"),)
 

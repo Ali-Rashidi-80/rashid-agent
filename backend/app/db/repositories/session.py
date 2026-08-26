@@ -11,7 +11,9 @@ class SessionRepository:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
-    async def create(self, project_path: str, title: str | None = None, mode: str = "agent") -> Session:
+    async def create(
+        self, project_path: str, title: str | None = None, mode: str = "agent"
+    ) -> Session:
         session = Session(
             id=uuid.uuid4(),
             project_path=project_path,
@@ -42,9 +44,7 @@ class SessionRepository:
         )
         self.db.add(msg)
         await self.db.execute(
-            update(Session)
-            .where(Session.id == session_id)
-            .values(updated_at=datetime.now(UTC))
+            update(Session).where(Session.id == session_id).values(updated_at=datetime.now(UTC))
         )
         await self.db.commit()
         await self.db.refresh(msg)

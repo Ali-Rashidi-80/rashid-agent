@@ -3,9 +3,10 @@
 import tempfile
 
 import pytest
+from httpx import ASGITransport, AsyncClient
+
 from app.domain.sse_events import parse_sse_chunks
 from app.main import app
-from httpx import ASGITransport, AsyncClient
 
 
 @pytest.mark.asyncio

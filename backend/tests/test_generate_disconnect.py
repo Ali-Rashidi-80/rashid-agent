@@ -3,6 +3,7 @@
 import tempfile
 
 import pytest
+
 from app.config.settings import get_settings
 from app.services.generate_stream import generate_stream
 from app.services.project_path import ProjectPathService

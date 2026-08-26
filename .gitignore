@@ -103,6 +103,19 @@ celerybeat.pid
 
 # Environments
 .env
+.env.local
+.env.local-mirror
+.env.chabokan
+.env.chabokan.*
+!.env.example
+!.env.local-mirror.example
+!.env.chabokan.split.example
+!**/.env.example
+backend/.env
+!backend/.env.example
+frontend/.env
+frontend/.env.local
+!frontend/.env.example
 .venv
 env/
 venv/

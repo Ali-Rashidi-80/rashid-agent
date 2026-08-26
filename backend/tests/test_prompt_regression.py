@@ -1,6 +1,7 @@
 """Prompt regression golden cases."""
 
 import pytest
+
 from app.services.prompt_registry import PromptRegistry
 
 

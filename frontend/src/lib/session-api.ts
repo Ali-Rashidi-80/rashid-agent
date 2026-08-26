@@ -228,21 +228,75 @@ export async function fetchSession(sessionId: string): Promise<ChatSession | nul
   }
 }
 
-export async function fetchMetisModels(): Promise<{ models: string[]; default: string }> {
+export interface MetisProviderCatalog {
+  id: string;
+  label: string;
+  models: string[];
+}
+
+export interface MetisModelsCatalog {
+  providers: MetisProviderCatalog[];
+  default_provider: string;
+  default_model: string;
+  /** Flat list kept for backward compatibility. */
+  models: string[];
+  default: string;
+}
+
+const FALLBACK_CATALOG: MetisModelsCatalog = {
+  providers: [{ id: "grok", label: "Grok / xAI", models: ["grok-code-fast-1"] }],
+  default_provider: "grok",
+  default_model: "grok-code-fast-1",
+  models: ["grok-code-fast-1"],
+  default: "grok-code-fast-1",
+};
+
+export async function fetchMetisModels(): Promise<MetisModelsCatalog> {
   try {
     const response = await fetch(`${API_PREFIX}/models`, { cache: "no-store" });
     if (!response.ok) {
-      return { models: ["grok-code-fast-1"], default: "grok-code-fast-1" };
+      return FALLBACK_CATALOG;
     }
-    const data = (await response.json()) as { models?: string[]; default?: string };
-    const models = Array.isArray(data.models) ? data.models.filter(Boolean) : [];
-    const fallback = data.default || "grok-code-fast-1";
+    const data = (await response.json()) as Partial<MetisModelsCatalog> & {
+      models?: string[];
+      default?: string;
+    };
+    const providers = Array.isArray(data.providers)
+      ? data.providers
+          .filter((row) => row && typeof row.id === "string")
+          .map((row) => ({
+            id: row.id,
+            label: typeof row.label === "string" && row.label ? row.label : row.id,
+            models: Array.isArray(row.models) ? row.models.filter(Boolean) : [],
+          }))
+          .filter((row) => row.models.length > 0)
+      : [];
+    const default_provider =
+      typeof data.default_provider === "string" && data.default_provider
+        ? data.default_provider
+        : providers[0]?.id || FALLBACK_CATALOG.default_provider;
+    const default_model =
+      typeof data.default_model === "string" && data.default_model
+        ? data.default_model
+        : typeof data.default === "string" && data.default
+          ? data.default
+          : FALLBACK_CATALOG.default_model;
+    const flat = Array.isArray(data.models) ? data.models.filter(Boolean) : [];
+    const models =
+      flat.length > 0
+        ? flat
+        : providers.flatMap((p) => p.models).length
+          ? providers.flatMap((p) => p.models)
+          : [default_model];
     return {
-      models: models.length ? models : [fallback],
-      default: fallback,
+      providers: providers.length ? providers : FALLBACK_CATALOG.providers,
+      default_provider,
+      default_model,
+      models,
+      default: default_model,
     };
   } catch {
-    return { models: ["grok-code-fast-1"], default: "grok-code-fast-1" };
+    return FALLBACK_CATALOG;
   }
 }
 

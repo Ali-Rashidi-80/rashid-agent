@@ -33,6 +33,7 @@ class AgentOrchestrator:
         project_path: str | None = None,
         request_id: str | None = None,
         model: str | None = None,
+        provider: str | None = None,
     ) -> dict | None:
         stream_text: list[str] = []
         async for chunk in generate_stream(
@@ -44,6 +45,7 @@ class AgentOrchestrator:
             project_path=project_path,
             request_id=request_id,
             model=model,
+            provider=provider,
             db=self._db,
         ):
             stream_text.append(chunk)
@@ -62,6 +64,7 @@ class AgentOrchestrator:
         session_id: str | None = None,
         request_id: str | None = None,
         model: str | None = None,
+        provider: str | None = None,
     ) -> dict:
         steps_log: list[dict] = []
         current_prompt = prompt
@@ -78,6 +81,7 @@ class AgentOrchestrator:
                 project_path=project_path,
                 request_id=request_id,
                 model=model,
+                provider=provider,
             )
             steps_completed = step
             steps_log.append(
@@ -102,9 +106,8 @@ class AgentOrchestrator:
                 result["log"] = f"{prior}\nVerify: {'; '.join(issues)}".strip()
                 break
 
-            current_prompt = (
-                "Fix the following issues from the previous code edits:\n"
-                + "\n".join(f"- {item}" for item in issues)
+            current_prompt = "Fix the following issues from the previous code edits:\n" + "\n".join(
+                f"- {item}" for item in issues
             )
 
         payload = result or {"message": "no result", "edits": [], "log": ""}

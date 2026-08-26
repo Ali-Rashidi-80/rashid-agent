@@ -1,8 +1,10 @@
-# Dev overrides — api/web/worker added in later phases
+# Local hybrid overrides (auto-merged with docker-compose.yml).
+# Keeps infra ports on loopback for host-run API/frontend.
+
 services:
   postgres:
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${POSTGRES_PUBLISH_PORT:-5432}:5432"
   redis:
     ports:
-      - "127.0.0.1:6380:6379"
+      - "127.0.0.1:${REDIS_PUBLISH_PORT:-6380}:6379"

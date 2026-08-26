@@ -2,6 +2,7 @@ import asyncio
 import json
 import uuid
 from collections.abc import AsyncIterator
+from typing import Any, cast
 
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -91,28 +92,141 @@ async def generate_stream(
     session_id: str | None = None,
     project_path: str | None = None,
     model: str | None = None,
+    provider: str | None = None,
     db: AsyncSession | None = None,
     *,
+    knowledge_base_id: str | None = None,
+    rag_only: bool = False,
+    tenant_id: str | None = None,
     is_disconnected=None,
 ) -> AsyncIterator[str]:
     request_id = request_id or str(uuid.uuid4())
     persister = _SessionPersister(db, session_id, prompt)
-    path = project_service.resolve_working_path(project_path)
-    if path is None:
-        code = "invalid_project_path" if project_path else "no_project_path"
-        message = (
-            "مسیر پروژه نامعتبر است"
-            if project_path
-            else "مسیر پروژه تنظیم نشده"
-        )
-        yield await _emit_error(request_id, {"code": code, "message": message})
-        yield await _emit_done(request_id, {"request_id": request_id})
-        return
+    use_rag = bool(knowledge_base_id)
+    if use_rag:
+        # RAG answers are ask-only (no local edits/pip).
+        mode = "ask"
+        if rag_only:
+            path = None
+        else:
+            path = project_service.resolve_working_path(project_path)
+    else:
+        path = project_service.resolve_working_path(project_path)
+        if path is None:
+            code = "invalid_project_path" if project_path else "no_project_path"
+            message = "مسیر پروژه نامعتبر است" if project_path else "مسیر پروژه تنظیم نشده"
+            yield await _emit_error(request_id, {"code": code, "message": message})
+            yield await _emit_done(request_id, {"request_id": request_id})
+            return
 
-    composer = ContextComposer(path, mode=mode)
-    system = composer.build_system_prompt()
-    user = composer.build_user_message(prompt)
-    metis = MetisService(settings, model=model)
+    system = ""
+    user = prompt
+    rag_sources: list[dict] = []
+    if use_rag:
+        if db is None:
+            yield await _emit_error(
+                request_id,
+                {"code": "db_required", "message": "پایگاه دانش نیاز به دیتابیس دارد"},
+            )
+            yield await _emit_done(request_id, {"request_id": request_id})
+            return
+        from app.services.kb_retrieve import KbRetrieveService
+
+        try:
+            kb_uuid = uuid.UUID(str(knowledge_base_id))
+        except ValueError:
+            yield await _emit_error(
+                request_id,
+                {"code": "invalid_kb_id", "message": "شناسه پایگاه دانش نامعتبر است"},
+            )
+            yield await _emit_done(request_id, {"request_id": request_id})
+            return
+
+        # Mandatory tenant binding — never resolve KB by bare id alone.
+        if not tenant_id:
+            yield await _emit_error(
+                request_id,
+                {
+                    "code": "tenant_required",
+                    "message": "برای پایگاه دانش شناسه کارفرما (tenant_id) الزامی است",
+                },
+            )
+            yield await _emit_done(request_id, {"request_id": request_id})
+            return
+        try:
+            tenant_uuid = uuid.UUID(str(tenant_id))
+        except ValueError:
+            yield await _emit_error(
+                request_id,
+                {"code": "invalid_tenant_id", "message": "شناسه کارفرما نامعتبر است"},
+            )
+            yield await _emit_done(request_id, {"request_id": request_id})
+            return
+
+        # Resolve KB under the caller's tenant (no cross-tenant id oracle).
+        from sqlalchemy import text
+
+        row = (
+            (
+                await db.execute(
+                    text(
+                        "SELECT id, tenant_id, system_prompt FROM knowledge_bases "
+                        "WHERE id = :id AND tenant_id = :tenant_id"
+                    ),
+                    {"id": kb_uuid, "tenant_id": tenant_uuid},
+                )
+            )
+            .mappings()
+            .first()
+        )
+        if row is None:
+            yield await _emit_error(
+                request_id,
+                {"code": "kb_not_found", "message": "پایگاه دانش یافت نشد"},
+            )
+            yield await _emit_done(request_id, {"request_id": request_id})
+            return
+        kb_tenant = row["tenant_id"]
+
+        retrieve = KbRetrieveService(db, settings)
+        chunks = await retrieve.retrieve(tenant_id=kb_tenant, kb_id=kb_uuid, query=prompt)
+        rag_sources = [
+            {
+                "chunk_id": str(c.chunk_id),
+                "doc_id": str(c.doc_id),
+                "filename": c.filename,
+                "excerpt": c.content[:400],
+                "score": c.score,
+            }
+            for c in chunks
+        ]
+        logger.info(
+            "kb_retrieve_audit",
+            request_id=request_id,
+            kb_id=str(kb_uuid),
+            tenant_id=str(kb_tenant),
+            hits=len(chunks),
+            doc_ids=[str(c.doc_id) for c in chunks],
+            chunk_ids=[str(c.chunk_id) for c in chunks],
+            rag_only=rag_only,
+        )
+        system, user = retrieve.build_rag_messages(
+            query=prompt,
+            chunks=chunks,
+            kb_system_prompt=row["system_prompt"] or "",
+            rag_only=True,
+        )
+        if path is not None and not rag_only:
+            composer = ContextComposer(path, mode=mode)
+            system = composer.build_system_prompt() + "\n\n" + system
+            user = composer.build_user_message(prompt) + "\n\n" + user
+    else:
+        assert path is not None  # guarded above for non-RAG paths
+        composer = ContextComposer(path, mode=mode)
+        system = composer.build_system_prompt()
+        user = composer.build_user_message(prompt)
+
+    metis = MetisService(settings, model=model, provider=provider)
     reconnect_degraded = False
 
     async def track_publish(event_type: str, data: dict) -> str | None:
@@ -122,10 +236,34 @@ async def generate_stream(
             reconnect_degraded = True
         return msg_id
 
-    files, truncated = composer.list_project_files()
-    ctx = {"files": len(files), "truncated": truncated, "request_id": request_id}
+    if path is not None:
+        composer = ContextComposer(path, mode=mode)
+        files, truncated = composer.list_project_files()
+        ctx = {"files": len(files), "truncated": truncated, "request_id": request_id}
+    else:
+        ctx = {"files": 0, "truncated": False, "request_id": request_id, "rag_only": True}
     await track_publish("context", ctx)
     yield _sse_line("context", ctx)
+    if use_rag:
+        sources_payload = {"sources": rag_sources, "knowledge_base_id": str(knowledge_base_id)}
+        await track_publish("sources", sources_payload)
+        yield _sse_line("sources", sources_payload)
+        if rag_only and not rag_sources:
+            refusal = {
+                "message": "سندی مرتبط در پایگاه دانش یافت نشد.",
+                "pip": "",
+                "edits": [],
+                "log": "rag_no_sources",
+            }
+            await track_publish("message_start", {})
+            yield _sse_line("message_start", {})
+            await track_publish("message_done", {"message": refusal["message"]})
+            yield _sse_line("message_done", {"message": refusal["message"]})
+            await track_publish("result", refusal)
+            yield _sse_line("result", refusal)
+            await persister.save(json.dumps(refusal, ensure_ascii=False))
+            yield await _emit_done(request_id, {"request_id": request_id})
+            return
     if reconnect_degraded:
         yield _sse_line("reconnect_degraded", {"message": "Redis replay unavailable"})
     await track_publish("message_start", {})
@@ -137,7 +275,9 @@ async def generate_stream(
         async for delta in metis.stream_message_phase(system, user):
             if is_disconnected and await is_disconnected():
                 partial = "".join(message_parts)
-                await persister.save(json.dumps({"partial": partial, "cancelled": True}, ensure_ascii=False))
+                await persister.save(
+                    json.dumps({"partial": partial, "cancelled": True}, ensure_ascii=False)
+                )
                 yield await _emit_error(
                     request_id,
                     {"code": "client_disconnected", "message": "قطع اتصال"},
@@ -151,7 +291,9 @@ async def generate_stream(
         full_message = "".join(message_parts)
 
         if is_disconnected and await is_disconnected():
-            await persister.save(json.dumps({"partial": full_message, "cancelled": True}, ensure_ascii=False))
+            await persister.save(
+                json.dumps({"partial": full_message, "cancelled": True}, ensure_ascii=False)
+            )
             yield await _emit_error(
                 request_id,
                 {"code": "client_disconnected", "message": "قطع اتصال"},
@@ -172,7 +314,9 @@ async def generate_stream(
             return
 
         if is_disconnected and await is_disconnected():
-            await persister.save(json.dumps({"partial": full_message, "cancelled": True}, ensure_ascii=False))
+            await persister.save(
+                json.dumps({"partial": full_message, "cancelled": True}, ensure_ascii=False)
+            )
             yield await _emit_error(
                 request_id,
                 {"code": "client_disconnected", "message": "قطع اتصال"},
@@ -206,8 +350,13 @@ async def generate_stream(
         result_obj = await edits_task
         result_obj.message = result_obj.message or full_message
         result = result_obj.model_dump()
-        if mode == "agent" and result.get("edits"):
-            issues = verify_edits_on_disk(path, result.get("edits", []))
+        edits_raw = result.get("edits") or []
+        if mode == "agent" and edits_raw:
+            edits_list = cast(
+                list[dict[Any, Any]],
+                [e for e in edits_raw if isinstance(e, dict)],
+            )
+            issues = verify_edits_on_disk(path, edits_list)
             if issues:
                 result["log"] = f"{result.get('log') or ''}\nVerify: {'; '.join(issues)}".strip()
                 verify_payload = {"ok": False, "issues": issues}

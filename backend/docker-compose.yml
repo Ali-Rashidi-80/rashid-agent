@@ -1,0 +1,102 @@
+# ============================================================
+# Rashid Agent — remote backend stack (Chabokan API container)
+# ============================================================
+# Use when frontend is a separate Chabokan/web service.
+# Managed PG/Redis: set DATABASE_URL / REDIS_URL to Chabokan
+# service hostnames and omit or stop local db/redis.
+#
+#   cd backend
+#   docker compose --env-file ../.env build
+#   docker compose --env-file ../.env up -d
+# ============================================================
+
+name: rashid-backend
+
+services:
+  db:
+    image: ${POSTGRES_IMAGE:-mirror2.chabokan.net/pgvector/pgvector:pg16}
+    container_name: rashid-backend-db
+    restart: unless-stopped
+    profiles: ["with-db"]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-rashid}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-rashid}
+    volumes:
+      - backend_pgdata:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PUBLISH_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-rashid} -d $${POSTGRES_DB:-rashid}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: ${REDIS_IMAGE:-mirror2.chabokan.net/library/redis:7-alpine}
+    container_name: rashid-backend-redis
+    restart: unless-stopped
+    profiles: ["with-db"]
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy noeviction
+    volumes:
+      - backend_redis:/data
+    ports:
+      - "${REDIS_PUBLISH_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  api:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+      args:
+        PYTHON_IMAGE: ${PYTHON_IMAGE:-mirror2.chabokan.net/library/python:3.11-slim-bookworm}
+    container_name: rashid-backend-api
+    restart: unless-stopped
+    env_file:
+      - path: ../.env
+        required: false
+    ports:
+      - "${API_PUBLISH_PORT:-8000}:8000"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      ARQ_REDIS_URL: ${ARQ_REDIS_URL:-}
+      RASHID_HOST: 0.0.0.0
+      RASHID_PORT: "8000"
+    volumes:
+      - ../backend/data:/app/backend/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/api/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
+  worker:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+      args:
+        PYTHON_IMAGE: ${PYTHON_IMAGE:-mirror2.chabokan.net/library/python:3.11-slim-bookworm}
+    container_name: rashid-backend-worker
+    restart: unless-stopped
+    env_file:
+      - path: ../.env
+        required: false
+    entrypoint: ["/app/backend/start.sh"]
+    command: ["arq", "worker.settings.WorkerSettings"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      ARQ_REDIS_URL: ${ARQ_REDIS_URL:-}
+      RASHID_SKIP_MIGRATE: "1"
+    volumes:
+      - ../backend/data:/app/backend/data
+
+volumes:
+  backend_pgdata:
+  backend_redis:

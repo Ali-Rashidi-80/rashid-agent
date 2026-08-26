@@ -1,37 +1,66 @@
-# Rashid Agent v2 — Quickstart (feature/rashid-agent-v2)
+# Rashid Agent — Quickstart (فارسی)
 
-Monorepo: `backend/` (FastAPI) + `frontend/` (Next.js — فاز ۲) + Docker (Postgres + Redis).
+[English](quickstart.md) | **فارسی**
+
+Monorepo: `backend/` (FastAPI) + `frontend/` (Next.js) + Docker (Postgres/pgvector + Redis).
 
 ## پیش‌نیاز
 
 - Python 3.11+
+- Node 20+
 - Docker Desktop
 - PowerShell (Windows)
 
-## راه‌اندازی سریع
+## راه‌اندازی سریع (hybrid)
 
 ```powershell
-# 1. میرورها (ایران)
+# 1. میرورها (ایران / چابکان)
 .\scripts\setup-mirrors.ps1
 
-# 2. زیرساخت
+# 2. کپی env
+copy .env.example .env
+copy frontend\.env.example frontend\.env.local
+# METIS_API_KEY و SECRETS_ENCRYPTION_KEY و TENANT_SEED_* را پر کنید
+
+# 3. زیرساخت
 .\scripts\infra-up.ps1
 
-# 3. وابستگی‌ها
+# 4. وابستگی‌ها
 pip install -e ".[dev]"
 
-# 4. مهاجرت DB (وقتی Postgres بالا است)
+# 5. مهاجرت DB
 .\scripts\migrate.ps1
 
-# 5. API توسعه
+# 6. API توسعه
 .\scripts\dev.ps1
 ```
 
-- Health: http://127.0.0.1:8000/api/v1/health
-- تنظیم مسیر پروژه: `POST /api/v1/project/path` با `{"path":"D:/your/project"}`
-- پیش‌نمایش ویرایش: `POST /api/v1/edits/preview`
+Frontend (ترمینال جدا):
 
-کپی `.env.example` به `.env` و کلید Metis را پر کنید.
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Worker (ترمینال جدا، برای KB بزرگ و تلگرام صف‌شده):
+
+```powershell
+.\scripts\smoke-worker.ps1 start
+```
+
+- Health: http://127.0.0.1:8000/api/v1/health  
+- UI: http://127.0.0.1:3000  
+- پس از login tenant: `/knowledge` و `/bots`  
+- راهنمای پلتفرم: [multi-tenant.fa.md](./multi-tenant.fa.md)
+
+## استک کامل داخل Docker
+
+```powershell
+.\scripts\stack-up.ps1
+```
+
+استقرار چابکان / آینه: [deployment.fa.md](./deployment.fa.md)
 
 ## تست
 
@@ -39,5 +68,3 @@ pip install -e ".[dev]"
 $env:PYTHONPATH="backend"
 python -m pytest backend/tests -v
 ```
-
----

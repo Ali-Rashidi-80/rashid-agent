@@ -1,11 +1,11 @@
-"""ARQ worker job tests."""
+"""ARQ worker job tests — require live worker (session fixture), no skip cheats."""
 
 import tempfile
 import uuid
 
 import pytest
-from app.config.settings import get_settings
 
+from app.config.settings import get_settings
 from tests.infra_markers import requires_infra
 
 pytestmark = requires_infra
@@ -28,7 +28,7 @@ async def test_job_generate_edits_direct(disable_external_api):
 
 
 @pytest.mark.asyncio
-async def test_arq_ping_when_worker_running():
+async def test_arq_ping_when_worker_running(arq_worker_running):
     import asyncio
 
     from arq import create_pool
@@ -38,12 +38,8 @@ async def test_arq_ping_when_worker_running():
     pool = await create_pool(RedisSettings.from_dsn(settings.effective_arq_redis_url))
     try:
         job = await pool.enqueue_job("ping")
-        if job is None:
-            pytest.skip("ARQ enqueue failed")
-        try:
-            result = await asyncio.wait_for(job.result(), timeout=5.0)
-        except TimeoutError:
-            pytest.skip("ARQ worker not running locally")
+        assert job is not None, "ARQ enqueue failed"
+        result = await asyncio.wait_for(job.result(), timeout=15.0)
         assert result == "pong"
     finally:
         await pool.aclose()

@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: rashid
           POSTGRES_PASSWORD: rashid
@@ -39,6 +39,9 @@ jobs:
           python-version: "3.11"
       - run: pip install -e ".[dev]"
       - run: python -m ruff check backend
+      - run: python -m black --check backend
+      - run: python -m isort --check-only backend
+      - run: python -m flake8 backend --max-line-length=100 --extend-ignore=E501,W503,E203
       - name: Migrate database
         working-directory: backend
         run: python -m alembic upgrade head
@@ -61,6 +64,8 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://rashid:rashid@localhost:5432/rashid
           REDIS_URL: redis://localhost:6379/0
           ARQ_REDIS_URL: redis://localhost:6379/1
+          RASHID_TOKEN: ""
+          KB_EMBED_HASH_FALLBACK: "true"
       - name: Stop ARQ worker
         if: always()
         run: |

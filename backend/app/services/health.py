@@ -36,7 +36,7 @@ async def check_redis(settings: Settings) -> HealthComponent:
         except RuntimeError:
             client = aioredis.from_url(settings.redis_url, decode_responses=True)
             pong = await client.ping()
-            await client.aclose()
+            await client.aclose()  # type: ignore[attr-defined]
         if pong:
             return HealthComponent(status="ok")
         return HealthComponent(status="error", detail="ping failed")
@@ -61,7 +61,7 @@ async def check_worker(settings: Settings) -> HealthComponent:
         except TimeoutError:
             return HealthComponent(status="degraded", detail="worker not running or slow")
         finally:
-            await pool.aclose()
+            await pool.aclose()  # type: ignore[attr-defined]
     except Exception as exc:
         return HealthComponent(status="degraded", detail=str(exc))
 

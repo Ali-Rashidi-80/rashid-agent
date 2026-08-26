@@ -1,0 +1,172 @@
+# ============================================================
+# Rashid Agent — Local DR Mirror (like Liquidglass lg-mirror-*)
+# ============================================================
+# Full local clone of postgres / redis / api / worker / web for
+# disaster-recovery and offline demos. Base images from Chabokan.
+#
+# Usage:
+#   cp .env.local-mirror.example .env.local-mirror
+#   docker compose -p rashid-mirror -f docker-compose.local-mirror.yml \
+#     --env-file .env.local-mirror build
+#   docker compose -p rashid-mirror -f docker-compose.local-mirror.yml \
+#     --env-file .env.local-mirror up -d
+#
+# Or: .\scripts\local-mirror-up.ps1
+# ============================================================
+
+name: rashid-mirror
+
+x-backend-build: &backend-build
+  context: .
+  dockerfile: backend/Dockerfile
+  args:
+    PYTHON_IMAGE: ${PYTHON_IMAGE:-mirror2.chabokan.net/library/python:3.11-slim-bookworm}
+
+services:
+  db:
+    image: ${LOCAL_POSTGRES_IMAGE:-mirror2.chabokan.net/pgvector/pgvector:pg16}
+    container_name: rashid-mirror-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${LOCAL_DB_NAME:-rashid}
+      POSTGRES_USER: ${LOCAL_DB_USER:-rashid}
+      POSTGRES_PASSWORD: ${LOCAL_DB_PASSWORD:?Set LOCAL_DB_PASSWORD in .env.local-mirror}
+    volumes:
+      - mirror_pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:${LOCAL_DB_PORT:-5433}:5432"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $${POSTGRES_USER:-rashid} -d $${POSTGRES_DB:-rashid}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  redis:
+    image: ${REDIS_IMAGE:-mirror2.chabokan.net/library/redis:7-alpine}
+    container_name: rashid-mirror-redis
+    restart: unless-stopped
+    command: >
+      sh -c 'redis-server --appendonly yes --requirepass "$${REDIS_PASSWORD:?Set REDIS_PASSWORD}" --maxmemory 512mb --maxmemory-policy noeviction'
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env.local-mirror}
+    volumes:
+      - mirror_redis:/data
+    ports:
+      - "127.0.0.1:${LOCAL_REDIS_PORT:-6381}:6379"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'redis-cli -a "$$REDIS_PASSWORD" ping | grep PONG',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  migrate:
+    build: *backend-build
+    container_name: rashid-mirror-migrate
+    env_file:
+      - path: .env.local-mirror
+        required: false
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${LOCAL_DB_USER:-rashid}:${LOCAL_DB_PASSWORD}@db:5432/${LOCAL_DB_NAME:-rashid}
+    entrypoint: ["/app/backend/start.sh"]
+    command: ["true"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build: *backend-build
+    container_name: rashid-mirror-api
+    restart: unless-stopped
+    env_file:
+      - path: .env.local-mirror
+        required: false
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${LOCAL_DB_USER:-rashid}:${LOCAL_DB_PASSWORD}@db:5432/${LOCAL_DB_NAME:-rashid}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      ARQ_REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
+      RASHID_HOST: 0.0.0.0
+      RASHID_PORT: "8000"
+      RASHID_SKIP_MIGRATE: "1"
+      RASHID_DEBUG: ${RASHID_DEBUG:-1}
+    ports:
+      - "127.0.0.1:${LOCAL_API_PORT:-8001}:8000"
+    volumes:
+      - mirror_data:/app/backend/data
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/api/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
+  worker:
+    build: *backend-build
+    container_name: rashid-mirror-worker
+    restart: unless-stopped
+    env_file:
+      - path: .env.local-mirror
+        required: false
+    entrypoint: ["/app/backend/start.sh"]
+    command: ["arq", "worker.settings.WorkerSettings"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${LOCAL_DB_USER:-rashid}:${LOCAL_DB_PASSWORD}@db:5432/${LOCAL_DB_NAME:-rashid}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      ARQ_REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/1
+      RASHID_SKIP_MIGRATE: "1"
+    volumes:
+      - mirror_data:/app/backend/data
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      disable: true
+
+  web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:-mirror2.chabokan.net/library/node:20-alpine}
+        BACKEND_URL: http://api:8000
+    container_name: rashid-mirror-web
+    restart: unless-stopped
+    environment:
+      BACKEND_URL: http://api:8000
+      RASHID_TOKEN: ${RASHID_TOKEN:-}
+    ports:
+      - "127.0.0.1:${LOCAL_WEB_PORT:-3001}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/fa"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+      start_period: 45s
+
+volumes:
+  mirror_pgdata:
+  mirror_redis:
+  mirror_data:

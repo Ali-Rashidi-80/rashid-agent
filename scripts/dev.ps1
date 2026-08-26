@@ -14,5 +14,9 @@ if ($null -ne $LASTEXITCODE -and $LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 $env:PYTHONPATH = Join-Path $Root "backend"
 Set-Location (Join-Path $Root "backend")
 
+# Background ARQ worker (KB ingest + telegram jobs)
+& "$Root\scripts\smoke-worker.ps1" start
+if (-not $?) { Write-Host "WARN: ARQ worker failed to start" -ForegroundColor Yellow }
+
 Write-Host "Starting API on 127.0.0.1:8000 ..." -ForegroundColor Cyan
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload

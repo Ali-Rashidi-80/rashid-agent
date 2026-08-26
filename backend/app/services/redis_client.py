@@ -13,7 +13,7 @@ async def init_redis(settings: Settings) -> None:
 async def close_redis() -> None:
     global _redis
     if _redis is not None:
-        await _redis.aclose()
+        await _redis.aclose()  # type: ignore[attr-defined]
     _redis = None
 
 

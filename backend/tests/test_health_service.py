@@ -1,6 +1,7 @@
 """Health service unit tests."""
 
 import pytest
+
 from app.config.settings import Settings
 from app.schemas.health import HealthComponent
 from app.services import health as health_service

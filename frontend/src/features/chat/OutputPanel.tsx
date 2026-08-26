@@ -6,6 +6,7 @@ import remarkGfm from "remark-gfm";
 import { useTranslations } from "next-intl";
 import { Loader2, Terminal } from "lucide-react";
 import { useAgentStore, type ChatTurn } from "@/lib/agent-store";
+import type { RagSource } from "@/features/chat/sse-state";
 import { cn } from "@/lib/cn";
 
 interface OutputPanelProps {
@@ -17,6 +18,7 @@ interface OutputPanelProps {
   pipCommand?: string;
   onRunPip?: (command: string) => void | Promise<void>;
   pipRunning?: boolean;
+  sources?: RagSource[];
 }
 
 function TurnBubble({
@@ -63,6 +65,7 @@ export function OutputPanel({
   pipCommand,
   onRunPip,
   pipRunning = false,
+  sources = [],
 }: OutputPanelProps) {
   const t = useTranslations("chat");
   const transcript = useAgentStore((s) => s.transcript);
@@ -99,6 +102,22 @@ export function OutputPanel({
           <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
             {error}
           </p>
+        )}
+
+        {sources.length > 0 && (
+          <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs">
+            <p className="mb-1 font-medium text-muted-foreground">{t("sourcesTitle")}</p>
+            <ul className="space-y-1">
+              {sources.map((source, index) => (
+                <li key={`${source.filename}-${index}`}>
+                  <span className="font-medium">{source.filename}</span>
+                  {source.excerpt ? (
+                    <span className="text-muted-foreground"> — {source.excerpt.slice(0, 160)}</span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
 
         {phase === "edits" && isStreaming && (

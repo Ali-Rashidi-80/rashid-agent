@@ -4,9 +4,10 @@ import tempfile
 from pathlib import Path
 
 import pytest
+from httpx import ASGITransport, AsyncClient
+
 from app.main import app
 from app.services.pip_safe import normalize_pip_args, run_pip_safe
-from httpx import ASGITransport, AsyncClient
 
 
 def test_normalize_pip_command_string():

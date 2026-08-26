@@ -1,3 +1,4 @@
+import os
 from logging.config import fileConfig
 
 from alembic import context
@@ -18,8 +19,16 @@ except ImportError:
 
 
 def get_url() -> str:
-    url = config.get_main_option("sqlalchemy.url", "")
-    return url.replace("postgresql+asyncpg://", "postgresql://")
+    """Prefer DATABASE_URL from the environment (Compose / runtime)."""
+    url = (os.environ.get("DATABASE_URL") or "").strip()
+    if not url:
+        url = config.get_main_option("sqlalchemy.url", "") or ""
+    # Sync driver for Alembic (psycopg2); app runtime keeps asyncpg.
+    return (
+        url.replace("postgresql+asyncpg://", "postgresql://")
+        .replace("postgresql+psycopg2://", "postgresql://")
+        .replace("postgresql+psycopg://", "postgresql://")
+    )
 
 
 def run_migrations_offline() -> None:
