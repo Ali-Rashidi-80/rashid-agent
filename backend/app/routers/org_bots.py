@@ -132,13 +132,13 @@ async def add_phone(
 ):
     repo = OrgBotRepository(db)
     try:
-        row = await repo.add_phone(
-            admin.tenant_id, bot_id, phone=body.phone, label=body.label
-        )
+        row = await repo.add_phone(admin.tenant_id, bot_id, phone=body.phone, label=body.label)
     except ValueError as exc:
         code = str(exc)
         if code == "bot_not_found":
-            raise HTTPException(status_code=404, detail={"error": {"code": "bot_not_found"}}) from None
+            raise HTTPException(
+                status_code=404, detail={"error": {"code": "bot_not_found"}}
+            ) from None
         raise HTTPException(status_code=400, detail={"error": {"code": "invalid_phone"}}) from None
     return row
 

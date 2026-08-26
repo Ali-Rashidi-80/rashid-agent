@@ -48,10 +48,9 @@ def build_otp_pattern_args(
 
 
 def _console_token(settings: Settings) -> str:
-    return (
-        (settings.sms_console_api_token or "").strip()
-        or (settings.melipayamak_console_token or "").strip()
-    )
+    return (settings.sms_console_api_token or "").strip() or (
+        settings.melipayamak_console_token or ""
+    ).strip()
 
 
 async def send_otp_sms(

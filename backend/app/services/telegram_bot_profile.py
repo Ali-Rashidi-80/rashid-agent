@@ -170,10 +170,7 @@ def meta_capabilities_message(bot_title: str) -> str:
 
 
 def admin_code_prompt() -> str:
-    return (
-        "کد یک‌بارمصرف یا رمز ادمین را بفرستید.\n"
-        f"یا با دستور: {cmd('login')} کد"
-    )
+    return "کد یک‌بارمصرف یا رمز ادمین را بفرستید.\n" f"یا با دستور: {cmd('login')} کد"
 
 
 def otp_sent_message() -> str:
@@ -247,7 +244,9 @@ async def _tg_post(
 ) -> dict[str, Any]:
     url = f"{api_base.rstrip('/')}/bot{bot_token}/{method}"
     resp = await client.post(url, json=payload or {})
-    data = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
+    data = (
+        resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
+    )
     if not resp.is_success or not data.get("ok"):
         logger.warning(
             "telegram_profile_api_failed",

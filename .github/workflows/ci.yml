@@ -85,8 +85,9 @@ jobs:
           node-version: "20"
       - run: npm ci
       - name: Verify frontend lib sources
+        # Job default WD is frontend/; this step must run from repo root (GHA WD is always under $GITHUB_WORKSPACE).
+        working-directory: ${{ github.workspace }}
         run: pwsh -File scripts/verify-frontend-lib.ps1
-        working-directory: ..
       - run: npm test
       - run: npm run lint
       - run: npm run build

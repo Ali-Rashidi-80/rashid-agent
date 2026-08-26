@@ -115,9 +115,7 @@ async def authorize_chat(
     await db.commit()
 
 
-async def deauthorize_chat(
-    db: AsyncSession, *, integration_id: uuid.UUID, chat_id: str
-) -> None:
+async def deauthorize_chat(db: AsyncSession, *, integration_id: uuid.UUID, chat_id: str) -> None:
     await db.execute(
         delete(MessengerLink).where(
             MessengerLink.integration_id == integration_id,
@@ -200,9 +198,7 @@ async def _handle_phone_share(
         )
         return
     if result.sent:
-        await set_state(
-            str(integration.id), chat_id, state=STATE_AWAIT_OTP, phone=phone or None
-        )
+        await set_state(str(integration.id), chat_id, state=STATE_AWAIT_OTP, phone=phone or None)
         await send_message(
             api_base=api_base,
             bot_token=token,
@@ -451,9 +447,7 @@ async def handle_telegram_update(
         )
         return
 
-    if text == BTN_ADMIN_CODE or (
-        _normalize_command(text) == "/login" and len(text.split()) == 1
-    ):
+    if text == BTN_ADMIN_CODE or (_normalize_command(text) == "/login" and len(text.split()) == 1):
         await set_state(iid, chat_id, state=STATE_AWAIT_ADMIN)
         await send_message(
             api_base=api_base,

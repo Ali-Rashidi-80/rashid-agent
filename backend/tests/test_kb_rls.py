@@ -40,10 +40,12 @@ async def test_pgvector_extension_and_kb_rls(live_client):
 
         kb_id = uuid.uuid4()
         await db.execute(
-            text("""
+            text(
+                """
                 INSERT INTO knowledge_bases (id, tenant_id, name, system_prompt)
                 VALUES (:id, :tid, 'A KB', '')
-                """),
+                """
+            ),
             {"id": kb_id, "tid": tenant_a_id},
         )
         await db.commit()
@@ -63,15 +65,27 @@ async def test_pgvector_extension_and_kb_rls(live_client):
 
         await db.rollback()
         await db.execute(text("RESET ROLE"))
-        hnsw = (await db.execute(text("""
+        hnsw = (
+            await db.execute(
+                text(
+                    """
                     SELECT 1 FROM pg_indexes
                     WHERE indexname = 'idx_kb_chunks_embedding_hnsw'
-                    """))).first()
+                    """
+                )
+            )
+        ).first()
         assert hnsw is not None, "HNSW index missing — run alembic upgrade to 007"
 
-        grants = (await db.execute(text("""
+        grants = (
+            await db.execute(
+                text(
+                    """
                     SELECT has_table_privilege('rashid_app', 'messenger_integrations', 'SELECT')
-                    """))).scalar()
+                    """
+                )
+            )
+        ).scalar()
         assert grants is True
 
         await db.execute(text("DELETE FROM knowledge_bases WHERE id = :id"), {"id": kb_id})

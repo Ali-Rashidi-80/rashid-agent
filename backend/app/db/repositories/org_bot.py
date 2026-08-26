@@ -112,7 +112,9 @@ class OrgBotRepository:
         await self.db.refresh(cred)
         return cred, code
 
-    async def list_phones(self, tenant_id: uuid.UUID, bot_id: uuid.UUID) -> list[OrgBotPhoneAllowlist]:
+    async def list_phones(
+        self, tenant_id: uuid.UUID, bot_id: uuid.UUID
+    ) -> list[OrgBotPhoneAllowlist]:
         result = await self.db.execute(
             select(OrgBotPhoneAllowlist)
             .where(
@@ -182,9 +184,7 @@ class OrgBotRepository:
         await self.db.commit()
         return True
 
-    async def is_phone_allowed(
-        self, tenant_id: uuid.UUID, bot_id: uuid.UUID, phone: str
-    ) -> bool:
+    async def is_phone_allowed(self, tenant_id: uuid.UUID, bot_id: uuid.UUID, phone: str) -> bool:
         normalized = normalize_phone_for_storage(phone)
         if not normalized:
             return False

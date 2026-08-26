@@ -94,11 +94,13 @@ class KbIngestService:
             await self.db.rollback()
             await set_tenant_id(self.db, tenant_id)
             await self.db.execute(
-                text("""
+                text(
+                    """
                     UPDATE kb_documents
                     SET status = 'error', error_message = :err
                     WHERE id = :id AND tenant_id = :tid
-                    """),
+                    """
+                ),
                 {"err": str(exc)[:2000], "id": doc_id, "tid": tenant_id},
             )
             await self.db.commit()

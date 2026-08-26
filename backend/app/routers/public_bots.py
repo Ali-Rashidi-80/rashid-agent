@@ -65,9 +65,7 @@ async def public_bot_otp_request(
     ip = _client_ip(request)
     if not await allow_request(f"otp_req:{slug}:{ip}", limit=10, window_seconds=60):
         raise HTTPException(status_code=429, detail={"error": {"code": "rate_limited"}})
-    result = await request_phone_otp(
-        db, settings, bot, phone_raw=body.phone, rate_key_extra=ip
-    )
+    result = await request_phone_otp(db, settings, bot, phone_raw=body.phone, rate_key_extra=ip)
     if result is not None and not result.accepted and result.error == "rate_limited":
         raise HTTPException(status_code=429, detail={"error": {"code": "rate_limited"}})
     return neutral
