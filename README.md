@@ -12,10 +12,6 @@
 
 **Quick links:** [Quick Start](#quick-start) · [Architecture](#architecture) · [Features](#features) · [Docs](docs/README.md) · [فارسی](README.fa.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [License](#license)
 
-<p align="center">
-  <img src="0/adl1.webp" alt="Rashid Agent — product visual" width="720" />
-</p>
-
 ---
 
 ## What it is
