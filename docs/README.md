@@ -65,3 +65,5 @@ python scripts/live_docker_stack_test.py
 `.env.example` · `backend/.env.example` · `frontend/.env.example` · `.env.local-mirror.example` · `.env.chabokan.split.example`
 
 Root overview: [../README.md](../README.md) · [فارسی](../README.fa.md)
+
+Brand: [../brand/PROMPT.md](../brand/PROMPT.md) · logo [`assets/rashid-agent-logo-3d.png`](./assets/rashid-agent-logo-3d.png)

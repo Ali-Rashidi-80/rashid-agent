@@ -1,9 +1,11 @@
 # همیار کد رشید | Rashid Agent
 
-[English](README.md) | **فارسی**
+<p align="center">
+  <img src="docs/assets/rashid-agent-logo-3d.png" alt="همیار کد رشید" width="180" height="180" />
+</p>
 
 <p align="center">
-  <img src="docs/assets/rashid-logo.jpg" alt="لوگوی همیار کد رشید" width="220" />
+<a href="README.md">English</a> · <strong>فارسی</strong>
 </p>
 
 [![CI](https://github.com/Ali-Rashidi-80/rashid-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/Ali-Rashidi-80/rashid-agent/actions/workflows/ci.yml)

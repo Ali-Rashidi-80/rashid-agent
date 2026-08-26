@@ -1,9 +1,11 @@
 # Rashid Agent
 
-**English** | [فارسی](README.fa.md)
+<p align="center">
+  <img src="docs/assets/rashid-agent-logo-3d.png" alt="Rashid Agent" width="180" height="180" />
+</p>
 
 <p align="center">
-  <img src="docs/assets/rashid-logo.jpg" alt="Rashid Agent logo" width="220" />
+<strong>English</strong> · <a href="README.fa.md">فارسی</a>
 </p>
 
 [![CI](https://github.com/Ali-Rashidi-80/rashid-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/Ali-Rashidi-80/rashid-agent/actions/workflows/ci.yml)

@@ -61,3 +61,5 @@ python scripts/live_docker_stack_test.py
 قالب env بدون secret: `.env.example` · `backend/.env.example` · `frontend/.env.example` · `.env.local-mirror.example`
 
 نمای کلی مخزن: [../README.fa.md](../README.fa.md) · [English](../README.md)
+
+برند: [../brand/PROMPT.fa.md](../brand/PROMPT.fa.md) · لوگو [`assets/rashid-agent-logo-3d.png`](./assets/rashid-agent-logo-3d.png)
