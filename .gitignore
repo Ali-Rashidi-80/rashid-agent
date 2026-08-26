@@ -190,3 +190,5 @@ backend/data/*
 # Temporary files
 *.tmp
 *.temp
+
+0/
