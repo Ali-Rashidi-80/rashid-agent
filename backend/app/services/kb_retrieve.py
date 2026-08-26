@@ -73,8 +73,7 @@ class KbRetrieveService:
         rows = (
             (
                 await self.db.execute(
-                    text(
-                        """
+                    text("""
                     SELECT c.id, c.doc_id, d.filename, c.content,
                            (c.embedding <=> CAST(:qvec AS vector)) AS distance
                     FROM kb_chunks c
@@ -85,8 +84,7 @@ class KbRetrieveService:
                       AND d.status IN ('ready', 'partial')
                     ORDER BY c.embedding <=> CAST(:qvec AS vector)
                     LIMIT :k
-                    """
-                    ),
+                    """),
                     {"qvec": vec_literal, "tid": tenant_id, "kid": kb_id, "k": k},
                 )
             )
